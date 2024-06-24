@@ -65,8 +65,8 @@ bag = rosbag.Bag('realsense.bag')
 
 for topic, msg, t in bag.read_messages():
     # print(topic)
-    # TODO: make sure that topic is replaced by the slash
-    # BUG: possibly make sure sequential stuff works
+    # TODO make sure that topic is replaced by the slash
+    # BUG possibly make sure sequential stuff works
     if topic == 'camera/aligned_depth_to_color/image_raw':
         print(topic, t)
         depth_image_callback(msg)
