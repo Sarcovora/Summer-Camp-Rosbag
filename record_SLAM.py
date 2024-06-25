@@ -6,9 +6,11 @@ import subprocess
 import time
 import datetime
 import threading
+import json
 
-# Global variable to control the recording process
 recording = True
+
+file_name = 'bag_dict.json'
 
 def signal_handler(sig, frame):
     global recording
@@ -33,6 +35,11 @@ def record_rosbag(now):
     process.terminate()
     process.wait()
 
+def get_user_info():
+    group_name = input("Please enter your group's name: ")
+    operator_name = input("Please enter the operator's name: ")
+    return group_name, operator_name
+
 def main():
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -56,10 +63,41 @@ def main():
         if input() == 's':
             signal_handler(None, None)
 
-    # Ensure the recording thread has finished
     record_thread.join()
 
-    # Prompt the user afterwards
+    # Kill the rest of the processes
+    print("Killing rosnode processes")
+    subprocess.run(['rosnode', 'kill', '--all'])
+
+    bag_name = 'SLAM_' + now + '.bag'
+
+    delete = input("Keep this recording? [Y/n]") == 'n'
+    if (delete):
+        print("Deleting bag...")
+        os.remove(bag_name)
+        print(bag_name, 'deleted.')
+        return
+
+    if os.path.exists(file_name):
+        with open(file_name, 'r') as file:
+            data = json.load(file)
+    else:
+        data = []
+
+    group, operator = get_user_info()
+
+    entry = {
+        "bag_name": bag_name,
+        "group_name": group,
+        "operator_name": operator,
+        "time_stamp": now
+    }
+
+    data.append(entry)
+
+    with open (file_name, 'w') as file:
+        json.dump(data, file, indent=4)
+
     input("Recording stopped. Press Enter to exit.")
 
 if __name__ == "__main__":
