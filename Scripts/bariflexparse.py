@@ -15,19 +15,22 @@ from numpy.linalg import inv
 from tf.transformations import quaternion_matrix
 from tf.transformations import euler_from_matrix
 
+# Non Compressed Topics
 # /camera/aligned_depth_to_color/image_raw
 # /camera/color/image_raw
 
-# CORRECT
+# Compression Topics
 # /camera/color/image_raw/compressed
 # /camera/aligned_depth_to_color/image_raw/compressed
 
+# Topics Currently Not Needed
 # /camera/aligned_depth_to_color/camera_info
 # /camera/color/camera_info
 # /clock
 # /rosout
 # /rosout_agg
 
+# TF Topics
 # /tf
 # /tf_static
 
@@ -40,6 +43,7 @@ def color_image_callback(data):
         # Convert the ROS Image message to OpenCV2
         cv_image = bridge.imgmsg_to_cv2(data, "bgr8")
         colorDeque.append(cv_image)
+
         # Display image
         # cv2.imshow("Color Image", cv_image)
         # cv2.waitKey(1)
@@ -52,6 +56,7 @@ def depth_image_callback(data):
         # Convert the ROS Image message to OpenCV2
         cv_image = bridge.imgmsg_to_cv2(data, "16UC1")
         depthDeque.append(cv_image)
+
         # Display image
         # cv2.imshow("Depth Image", cv_image)
         # cv2.waitKey(1)
@@ -73,7 +78,7 @@ def main():
     rate = rospy.Rate(30)
     prevtrans = tf_buffer.lookup_transform('map', 'map', rospy.Time(0))
     while not rospy.is_shutdown():
-        # tf lookup here
+        # tf lookup stuff
         try:
             trans = tf_buffer.lookup_transform('camera_link', 'map', rospy.Time(0))
             translation = trans.transform.translation
@@ -90,20 +95,20 @@ def main():
                 currRot[:3, -1] = [translation.x, translation.y, translation.z]
                 prevRot[:3, -1] = [prevtranslation.x, prevtranslation.y, prevtranslation.z]
 
-                deltaHomo = inv(prevRot) @ currRot
+                deltaHomogenous = inv(prevRot) @ currRot
 
-                # print(deltaHomo)
+                # print(deltaHomogenous)
 
                 # get the Euler and Translation values from homgenous matrix
-                translation = deltaHomo[:3, -1]
-                rotationMat = deltaHomo[:3, :3]
+                translation = deltaHomogenous[:3, -1]
+                rotationMat = deltaHomogenous[:3, :3]
 
                 euler = euler_from_matrix(rotationMat, 'rxyz')
 
                 # print(translation)
                 # print(euler)
 
-                data.append({'color': colorDeque[-1], 'depth': depthDeque[-1], 'tf_relative_homo': currRot, 'tf_delta_homo': deltaHomo})
+                data.append({'color': colorDeque[-1], 'depth': depthDeque[-1], 'tf_relative_homo': currRot, 'tf_delta_homo': deltaHomogenous})
                 print(data[-1])
             else:
                 print("No if was entered ;(")
@@ -116,7 +121,7 @@ def main():
         rate.sleep()
 
     rospy.spin()
-    print("finished reading bag!")
+    print("Finished reading bag!")
 
     # Close all OpenCV windows
     print(data)
