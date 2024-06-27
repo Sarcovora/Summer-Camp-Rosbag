@@ -38,7 +38,8 @@ def record_rosbag(now):
 def get_user_info():
     group_name = input("Please enter your group's name: ")
     operator_name = input("Please enter the operator's name: ")
-    return group_name, operator_name
+    task = input("Task name (optional: can leave empty)")
+    return group_name, operator_name, task
 
 def main():
     signal.signal(signal.SIGINT, signal_handler)
@@ -87,13 +88,14 @@ def main():
     else:
         data = []
 
-    group, operator = get_user_info()
+    group, operator, task = get_user_info()
 
     entry = {
         "bag_name": bag_name,
         "group_name": group,
         "operator_name": operator,
-        "time_stamp": now
+        "time_stamp": now,
+        "task": task if len(task) > 0 else "empty"
     }
 
     data.append(entry)
