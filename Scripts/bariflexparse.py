@@ -37,12 +37,18 @@ from tf.transformations import euler_from_matrix
 colorDeque = deque()
 depthDeque = deque()
 
+# denotes the number of elemented added to the deque since the last TF update and data append
+colorCyclesOffset = 0
+depthCycleOffset = 0
+
 def color_image_callback(data):
+    global colorDeque, colorCyclesOffset
     try:
         bridge = CvBridge()
         # Convert the ROS Image message to OpenCV2
         cv_image = bridge.imgmsg_to_cv2(data, "bgr8")
         colorDeque.append(cv_image)
+        colorCyclesOffset += 1
 
         # Display image
         # cv2.imshow("Color Image", cv_image)
@@ -51,11 +57,13 @@ def color_image_callback(data):
         rospy.logerr("CvBridge Error: {0}".format(e))
 
 def depth_image_callback(data):
+    global depthDeque, depthCycleOffset
     try:
         bridge = CvBridge()
         # Convert the ROS Image message to OpenCV2
         cv_image = bridge.imgmsg_to_cv2(data, "16UC1")
         depthDeque.append(cv_image)
+        depthCycleOffset += 1
 
         # Display image
         # cv2.imshow("Depth Image", cv_image)
@@ -64,10 +72,14 @@ def depth_image_callback(data):
         rospy.logerr("CvBridge Error: {0}".format(e))
 
 def main():
+    global colorDeque, colorCyclesOffset, depthDeque, depthCycleOffset
+
     rospy.init_node('image_subscriber_node', anonymous=True)
 
     rospy.Subscriber('/camera/color/image_raw', Image, color_image_callback)
     rospy.Subscriber('/camera/aligned_depth_to_color/image_raw', Image, depth_image_callback)
+
+
 
     # tf lookup setup
     tf_buffer = tf2_ros.Buffer()
@@ -89,13 +101,13 @@ def main():
             # print("Translation: ", type(translation))
             # print("Rotation: ", rotation)
             if (colorDeque and depthDeque):
-                currRot = quaternion_matrix([rotation.x, rotation.y, rotation.z, rotation.w])
-                prevRot = quaternion_matrix([prevrotation.x, prevrotation.y, prevrotation.z, prevrotation.w])
+                currTransform = quaternion_matrix([rotation.x, rotation.y, rotation.z, rotation.w])
+                prevTransform = quaternion_matrix([prevrotation.x, prevrotation.y, prevrotation.z, prevrotation.w])
 
-                currRot[:3, -1] = [translation.x, translation.y, translation.z]
-                prevRot[:3, -1] = [prevtranslation.x, prevtranslation.y, prevtranslation.z]
+                currTransform[:3, -1] = [translation.x, translation.y, translation.z]
+                prevTransform[:3, -1] = [prevtranslation.x, prevtranslation.y, prevtranslation.z]
 
-                deltaHomogenous = inv(prevRot) @ currRot
+                deltaHomogenous = inv(prevTransform) @ currTransform
 
                 # print(deltaHomogenous)
 
@@ -107,9 +119,12 @@ def main():
 
                 # print(translation)
                 # print(euler)
+                print("color offset", colorCyclesOffset, "depth offset", depthCycleOffset)
 
-                data.append({'color': colorDeque[-1], 'depth': depthDeque[-1], 'tf_relative_homo': currRot, 'tf_delta_homo': deltaHomogenous})
-                print(data[-1])
+                data.append({'color': colorDeque[-1 * colorCyclesOffset], 'depth': depthDeque[-1 * depthCycleOffset], 'tf_relative_prev_homo': prevTransform, 'tf_relative_homo': currTransform, 'tf_delta_action_homo': deltaHomogenous})
+                colorCyclesOffset = 0
+                depthCycleOffset = 0
+                # print(data[-1])
             else:
                 print("No if was entered ;(")
             prevtrans = trans
@@ -124,7 +139,7 @@ def main():
     print("Finished reading bag!")
 
     # Close all OpenCV windows
-    print(data)
+    # print(data)
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':

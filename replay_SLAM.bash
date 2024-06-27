@@ -7,5 +7,5 @@ rosrun image_transport republish compressed in:=/camera/color/image_raw raw out:
 rosrun image_transport republish compressedDepth in:=/camera/aligned_depth_to_color/image_raw raw out:=/camera/aligned_depth_to_color/image_raw &
 echo "Press Ctrl^C to exit"
 trap 'rosnode kill --all' SIGINT
-rosbag play "$1" --clock
+rosbag play "$1" --rate 0.5 --clock
 sleep 3000h

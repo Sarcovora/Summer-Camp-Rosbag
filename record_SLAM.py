@@ -51,6 +51,9 @@ def main():
 
     # Launch the RealSense camera node
     subprocess.Popen(['roslaunch', 'realsense2_camera', 'opensource_tracking.launch'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # subprocess.Popen(['roslaunch', 'realsense2_camera', 'opensource_tracking_from_map.launch'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # subprocess.Popen(['roslaunch', 'realsense2_camera', 'opensource_tracking_SLAMless.launch'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
 
     input("Press Enter to start recording\n")
     print("Press 's' and Enter to stop recording")

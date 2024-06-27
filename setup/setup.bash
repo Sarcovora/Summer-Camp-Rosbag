@@ -34,6 +34,7 @@ sudo apt-get install -y ros-noetic-octomap-rviz-plugins
 sudo apt-get install -y ros-noetic-compressed-image-transport
 sudo apt-get install -y ros-noetic-compressed-depth-image-transport
 pip install opencv-python
+cp opensource_tracking.launch /opt/ros/noetic/share/realsense2_camera/launch/
 
 # COPY opensource_tracking.launch /opt/ros/noetic/share/realsense2_camera/launch/
 # COPY rs_camera.launch /opt/ros/noetic/share/realsense2_camera/launch/
