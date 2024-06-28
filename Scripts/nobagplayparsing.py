@@ -76,6 +76,8 @@ def depth_image_callback(data):
 def main():
     global colorDeque, colorCyclesOffset, depthDeque, depthCycleOffset
 
+        rospy.init_node('image_subscriber_node', anonymous=True)
+
     parser = argparse.ArgumentParser(description='Process a ROS bag file.')
     parser.add_argument('bagfile', type=str, help='Path to the ROS bag file')
     args = parser.parse_args()
