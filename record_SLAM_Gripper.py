@@ -22,7 +22,7 @@ def record_rosbag(now):
     process = subprocess.Popen([
         'rosbag', 'record', '-O', f'SLAM_{now}.bag', '-b', '0',
         '/camera/aligned_depth_to_color/camera_info',
-        '/camera/aligned_depth_to_color/image_raw/compressed',
+        '/camera/aligned_depth_to_color/image_raw/compressedDepth`',
         '/camera/color/camera_info',
         '/camera/color/image_raw/compressed',
         '/camera/imu',
