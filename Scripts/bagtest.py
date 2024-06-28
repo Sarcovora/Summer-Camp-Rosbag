@@ -15,19 +15,22 @@ from tf.transformations import quaternion_matrix
 from tf.transformations import euler_from_matrix
 
 
+# Non Compressed Topics
 # /camera/aligned_depth_to_color/image_raw
 # /camera/color/image_raw
 
-# CORRECT
+# Compression Topics
 # /camera/color/image_raw/compressed
-# /camera/aligned_depth_to_color/image_raw/compressed
+# /camera/aligned_depth_to_color/image_raw/compressedDepth
 
+# Topics Currently Not Needed
 # /camera/aligned_depth_to_color/camera_info
 # /camera/color/camera_info
 # /clock
 # /rosout
 # /rosout_agg
 
+# TF Topics
 # /tf
 # /tf_static
 

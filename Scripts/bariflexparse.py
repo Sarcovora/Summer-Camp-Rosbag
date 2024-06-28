@@ -37,7 +37,7 @@ from tf.transformations import euler_from_matrix
 colorDeque = deque()
 depthDeque = deque()
 
-# denotes the number of elemented added to the deque since the last TF update and data append
+# denotes the number of elements added to the deque since the last TF update and data append
 colorCyclesOffset = 0
 depthCycleOffset = 0
 
