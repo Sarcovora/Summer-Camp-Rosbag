@@ -68,15 +68,15 @@ def depth_image_callback(data):
         depthCycleOffset += 1
 
         # Display image
-        # cv2.imshow("Depth Image", cv_image)
-        # cv2.waitKey(1)
+        cv2.imshow("Depth Image", cv_image)
+        cv2.waitKey(1)
     except CvBridgeError as e:
         rospy.logerr("CvBridge Error: {0}".format(e))
 
 def main():
     global colorDeque, colorCyclesOffset, depthDeque, depthCycleOffset
 
-        rospy.init_node('image_subscriber_node', anonymous=True)
+    rospy.init_node('image_subscriber_node', anonymous=True)
 
     parser = argparse.ArgumentParser(description='Process a ROS bag file.')
     parser.add_argument('bagfile', type=str, help='Path to the ROS bag file')
@@ -85,13 +85,13 @@ def main():
     bag_path = args.bagfile
 
     # tf lookup setup
-    tf_buffer = tf2_ros.Buffer()
-    tf_listener = tf2_ros.TransformListener(tf_buffer)
+    # tf_buffer = tf2_ros.Buffer()
+    # tf_listener = tf2_ros.TransformListener(tf_buffer)
 
     data = []
 
-    rate = rospy.Rate(30)
-    prevTransform = tf_buffer.lookup_transform('map', 'map', rospy.Time(0))
+    # rate = rospy.Rate(30)
+    # prevTransform = tf_buffer.lookup_transform('map', 'map', rospy.Time(0))
 
     bag = rosbag.Bag(bag_path)
 
@@ -103,44 +103,44 @@ def main():
             color_image_callback(msg)
 
         # tf lookup stuff
-        try:
-            transform = tf_buffer.lookup_transform('camera_link', 'map', rospy.Time(0))
-            translation = transform.transform.translation
-            rotation = transform.transform.rotation
-
-            prevtranslation = prevTransform.transform.translation
-            prevrotation = prevTransform.transform.rotation
-
-            if (colorDeque and depthDeque):
-                currTransform = quaternion_matrix([rotation.x, rotation.y, rotation.z, rotation.w])
-                prevTransform = quaternion_matrix([prevrotation.x, prevrotation.y, prevrotation.z, prevrotation.w])
-
-                currTransform[:3, -1] = [translation.x, translation.y, translation.z]
-                prevTransform[:3, -1] = [prevtranslation.x, prevtranslation.y, prevtranslation.z]
-
-                deltaHomogenous = inv(prevTransform) @ currTransform
-
-                # get the Euler and Translation values from homgenous matrix
-                translation = deltaHomogenous[:3, -1]
-                rotationMat = deltaHomogenous[:3, :3]
-
-                euler = euler_from_matrix(rotationMat, 'rxyz')
-
-				# print("translation", translation, "rotation", euler)
-                print("color offset", colorCyclesOffset, "depth offset", depthCycleOffset)
-
-                data.append({'color': colorDeque[-1 * colorCyclesOffset], 'depth': depthDeque[-1 * depthCycleOffset], 'tf_relative_prev_homo': prevTransform, 'tf_relative_homo': currTransform, 'tf_delta_action_homo': deltaHomogenous})
-                colorCyclesOffset = 0
-                depthCycleOffset = 0
-            else:
-                print("No if was entered ;(")
-            prevTransform = transform
-
-            print("translation and rotation successfully parsed")
-        except Exception as e:
-            print("oops:", e)
-
-        rate.sleep()
+				#     try:
+				#         transform = tf_buffer.lookup_transform('camera_link', 'map', rospy.Time(0))
+				#         translation = transform.transform.translation
+				#         rotation = transform.transform.rotation
+				#
+				#         prevtranslation = prevTransform.transform.translation
+				#         prevrotation = prevTransform.transform.rotation
+				#
+				#         if (colorDeque and depthDeque):
+				#             currTransform = quaternion_matrix([rotation.x, rotation.y, rotation.z, rotation.w])
+				#             prevTransform = quaternion_matrix([prevrotation.x, prevrotation.y, prevrotation.z, prevrotation.w])
+				#
+				#             currTransform[:3, -1] = [translation.x, translation.y, translation.z]
+				#             prevTransform[:3, -1] = [prevtranslation.x, prevtranslation.y, prevtranslation.z]
+				#
+				#             deltaHomogenous = inv(prevTransform) @ currTransform
+				#
+				#             # get the Euler and Translation values from homgenous matrix
+				#             translation = deltaHomogenous[:3, -1]
+				#             rotationMat = deltaHomogenous[:3, :3]
+				#
+				#             euler = euler_from_matrix(rotationMat, 'rxyz')
+				#
+				# # print("translation", translation, "rotation", euler)
+				#             print("color offset", colorCyclesOffset, "depth offset", depthCycleOffset)
+				#
+				#             data.append({'color': colorDeque[-1 * colorCyclesOffset], 'depth': depthDeque[-1 * depthCycleOffset], 'tf_relative_prev_homo': prevTransform, 'tf_relative_homo': currTransform, 'tf_delta_action_homo': deltaHomogenous})
+				#             colorCyclesOffset = 0
+				#             depthCycleOffset = 0
+				#         else:
+				#             print("No if was entered ;(")
+				#         prevTransform = transform
+				#
+				#         print("translation and rotation successfully parsed")
+				#     except Exception as e:
+				#         print("oops:", e)
+				#
+				#     rate.sleep()
 
     bag.close()
 
