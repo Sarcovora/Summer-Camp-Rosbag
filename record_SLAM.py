@@ -13,14 +13,14 @@ recording = True
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
 data_dir = os.path.join(script_dir, 'data')
-saved_maps_dir = os.path.join(data_dir, 'saved_maps')
+saved_maps_dir = os.path.join(script_dir, 'saved_maps')
 saved_demos_dir = os.path.join(data_dir, 'saved_demos')
 saved_mapping_dir = os.path.join(data_dir, 'saved_mapping')
 
 dict_path = os.path.join(script_dir, 'data', 'bag_dict.json')
 
 os.makedirs(data_dir, exist_ok=True)
-os.makedirs(saved_maps_dir, exist_ok=True)
+# os.makedirs(saved_maps_dir, exist_ok=True)
 os.makedirs(saved_demos_dir, exist_ok=True)
 os.makedirs(saved_mapping_dir, exist_ok=True)
 
@@ -42,7 +42,7 @@ def generate_bag_path(now):
     global data_dir, dict_path, bag_name, map_name, mappingStage
     if (mappingStage):
         bag_name = f'mapping_{map_name}_{now}.bag'
-        return os.path.join(saved_maps_dir, f'mapping_{map_name}_{now}.bag')
+        return os.path.join(saved_mapping_dir, f'mapping_{map_name}_{now}.bag')
     else:
         bag_name = f'demo_{map_name}_{now}.bag'
         return os.path.join(saved_demos_dir, f'demo_{map_name}_{now}.bag')
