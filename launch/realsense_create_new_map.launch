@@ -21,8 +21,6 @@
         <arg name="args" value="-delete_db_on_start"/>
         <arg name="database_path" value="$(arg database_path)"/>
 
-        <arg name="localization" value="true"/>
-
         <arg name="rgb_topic" value="/camera/color/image_raw"/>
         <arg name="depth_topic" value="/camera/aligned_depth_to_color/image_raw"/>
         <arg name="camera_info_topic" value="/camera/color/camera_info"/>
