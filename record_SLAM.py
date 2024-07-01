@@ -95,7 +95,7 @@ def main():
         map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
 
         print("Creating new map...", map_file_path)
-        subprocess.Popen(['roslaunch', './launch/realsense_create_new_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        subprocess.Popen(['roslaunch', './launch/realsense_create_new_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.STDOUT, stderr=subprocess.STDOUT)
     else:
         # Show saved maps
         print("These are the saved maps:")
@@ -108,7 +108,7 @@ def main():
         map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
 
         print("Loading map from file...", map_file_path)
-        subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.STDOUT, stderr=subprocess.STDOUT)
 
 
     input("Press Enter to start recording\n")
