@@ -10,9 +10,21 @@ import json
 
 recording = True
 
-file_name = 'bag_dict.json'
+script_dir = os.path.dirname(os.path.realpath(__file__))
+dict_path = os.path.join(script_dir, 'data', 'bag_dict.json')
+bag_name = 'default_bag'
+bag_path = 'default_path'
+map_name = 'default_map'
+mappingStage = True
 
-map_file = 'default_map.db'
+def generate_bag_path(now):
+    global script_dir, dict_path, bag_name, map_name, mappingStage
+    if (mappingStage):
+        bag_name = f'mapping_{map_name}_{now}.bag'
+        return os.path.join(script_dir, 'data', 'saved_maps', f'mapping_{map_name}_{now}.bag')
+    else:
+        bag_name = f'demo_{map_name}_{now}.bag'
+        return os.path.join(script_dir, 'data', 'saved_demos', f'demo_{map_name}_{now}.bag')
 
 def signal_handler(sig, frame):
     global recording
@@ -20,17 +32,17 @@ def signal_handler(sig, frame):
     recording = False
 
 def record_rosbag(now):
-    global recording
+    global recording, bag_path
+    bag_path = generate_bag_path(now)
     process = subprocess.Popen([
-        'rosbag', 'record', '-O', f'SLAM_{now}.bag', '-b', '0',
+        'rosbag', 'record', '-O', bag_path, '-b', '0',
         '/camera/aligned_depth_to_color/camera_info',
         '/camera/aligned_depth_to_color/image_raw/compressedDepth',
         '/camera/color/camera_info',
         '/camera/color/image_raw/compressed',
         '/camera/imu',
         '/camera/imu_info',
-        '/tf_static',
-        '/tf'
+        '/tf_static'
     ])
     while recording:
         time.sleep(1)
@@ -44,7 +56,7 @@ def get_user_info():
     return group_name, operator_name, task
 
 def main():
-    global map_file
+    global map_name, script_dir, bag_name, bag_path, mappingStage
 
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -54,14 +66,11 @@ def main():
     # Set ROS parameters
     subprocess.run(['rosparam', 'set', 'use_sim_time', 'false'])
 
-    newMap = input("Would you like to create a new map? [Y/n]").lower() == 'y'
+    mappingStage = input("Would you like to create a new map? [Y/n]").lower() == 'y'
 
-	# Directory of this script
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-
-    if newMap:
-        map_file = input("Enter the name of the map file to create (without extension): ")
-        map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_file}.db')
+    if mappingStage:
+        map_name = input("Enter the name of the map file to create (without extension): ")
+        map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_name}.db')
 
         print("Creating new map...")
         subprocess.Popen(['roslaunch', './launch/realsense_create_new_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -71,8 +80,8 @@ def main():
         saved_maps = os.listdir(os.path.join(script_dir, 'saved_maps'))
         print(saved_maps)
 
-        map_file = input("Enter the name of the map file to load (without extension): ")
-        map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_file}.db')
+        map_name = input("Enter the name of the map file to load (without extension): ")
+        map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_name}.db')
 
         print("Loading map from file...")
         subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -95,17 +104,16 @@ def main():
     print("Killing rosnode processes")
     subprocess.run(['rosnode', 'kill', '--all'])
 
-    bag_name = 'SLAM_' + now + '.bag'
+    if (not mappingStage):
+        delete = input("Keep this recording? [Y/n]").lower() == 'n'
+        if (delete):
+            print("Deleting bag...")
+            os.remove(bag_path)
+            print(bag_path, 'deleted.')
+            return
 
-    delete = input("Keep this recording? [Y/n]").lower() == 'n'
-    if (delete):
-        print("Deleting bag...")
-        os.remove(bag_name)
-        print(bag_name, 'deleted.')
-        return
-
-    if os.path.exists(file_name):
-        with open(file_name, 'r') as file:
+    if os.path.exists(dict_path):
+        with open(dict_path, 'r') as file:
             data = json.load(file)
     else:
         data = []
@@ -118,12 +126,12 @@ def main():
         "operator_name": operator,
         "time_stamp": now,
         "task": task if len(task) > 0 else "empty",
-        "map_file": map_file
+        "map_file": map_name
     }
 
     data.append(entry)
 
-    with open (file_name, 'w') as file:
+    with open (dict_path, 'w') as file:
         json.dump(data, file, indent=4)
 
     input("Recording stopped. Press Enter to exit.")
