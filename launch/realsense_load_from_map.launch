@@ -1,5 +1,7 @@
 <launch>
-    <arg name="offline"          default="false"/>
+    <arg name="offline" default="false"/>
+    <arg name="database_path" default="default_map.db"/>
+
     <include unless="$(arg offline)" 
         file="$(find realsense2_camera)/launch/rs_camera.launch">
         <arg name="align_depth" value="true"/>
@@ -16,6 +18,8 @@
     </node>
 
     <include file="$(find rtabmap_ros)/launch/rtabmap.launch">
+        <arg name="database_path" value="$(arg database_path)"/>
+
         <arg name="rgb_topic" value="/camera/color/image_raw"/>
         <arg name="depth_topic" value="/camera/aligned_depth_to_color/image_raw"/>
         <arg name="camera_info_topic" value="/camera/color/camera_info"/>

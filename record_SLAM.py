@@ -50,10 +50,28 @@ def main():
     # Set ROS parameters
     subprocess.run(['rosparam', 'set', 'use_sim_time', 'false'])
 
-    # Launch the RealSense camera node
-    subprocess.Popen(['roslaunch', 'realsense2_camera', 'opensource_tracking.launch'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    # subprocess.Popen(['roslaunch', 'realsense2_camera', 'opensource_tracking_from_map.launch'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    # subprocess.Popen(['roslaunch', 'realsense2_camera', 'opensource_tracking_SLAMless.launch'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    newMap = input("Would you like to create a new map? [Y/n]").lower() == 'y'
+
+	# Directory of this script
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+
+    if newMap:
+        map_file = input("Enter the name of the map file to create (without extension): ")
+        map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_file}.db')
+
+        print("Creating new map...")
+        subprocess.Popen(['roslaunch', './launch/realsense_create_new_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        # Show saved maps
+        print("These are the saved maps:")
+        saved_maps = os.listdir(os.path.join(script_dir, 'saved_maps'))
+        print(saved_maps)
+
+        map_file = input("Enter the name of the map file to load (without extension): ")
+        map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_file}.db')
+
+        print("Loading map from file...")
+        subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
     input("Press Enter to start recording\n")
@@ -75,7 +93,7 @@ def main():
 
     bag_name = 'SLAM_' + now + '.bag'
 
-    delete = input("Keep this recording? [Y/n]") == 'n'
+    delete = input("Keep this recording? [Y/n]").lower() == 'n'
     if (delete):
         print("Deleting bag...")
         os.remove(bag_name)
