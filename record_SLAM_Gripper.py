@@ -11,20 +11,41 @@ import json
 recording = True
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
+
+data_dir = os.path.join(script_dir, 'data')
+saved_maps_dir = os.path.join(script_dir, 'saved_maps')
+saved_demos_dir = os.path.join(data_dir, 'saved_demos')
+saved_mapping_dir = os.path.join(data_dir, 'saved_mapping')
+
 dict_path = os.path.join(script_dir, 'data', 'bag_dict.json')
+
+os.makedirs(data_dir, exist_ok=True)
+# os.makedirs(saved_maps_dir, exist_ok=True)
+os.makedirs(saved_demos_dir, exist_ok=True)
+os.makedirs(saved_mapping_dir, exist_ok=True)
+
 bag_name = 'default_bag'
 bag_path = 'default_path'
 map_name = 'default_map'
 mappingStage = True
 
+# def generate_bag_path(now):
+#     global script_dir, dict_path, bag_name, map_name, mappingStage
+#     if (mappingStage):
+#         bag_name = f'mapping_{map_name}_{now}.bag'
+#         return os.path.join(script_dir, 'data', 'saved_mapping', f'mapping_{map_name}_{now}.bag')
+#     else:
+#         bag_name = f'demo_{map_name}_{now}.bag'
+#         return os.path.join(script_dir, 'data', 'saved_demos', f'demo_{map_name}_{now}.bag')
+
 def generate_bag_path(now):
-    global script_dir, dict_path, bag_name, map_name, mappingStage
+    global data_dir, dict_path, bag_name, map_name, mappingStage
     if (mappingStage):
         bag_name = f'mapping_{map_name}_{now}.bag'
-        return os.path.join(script_dir, 'data', 'saved_maps', f'mapping_{map_name}_{now}.bag')
+        return os.path.join(saved_mapping_dir, f'mapping_{map_name}_{now}.bag')
     else:
         bag_name = f'demo_{map_name}_{now}.bag'
-        return os.path.join(script_dir, 'data', 'saved_demos', f'demo_{map_name}_{now}.bag')
+        return os.path.join(saved_demos_dir, f'demo_{map_name}_{now}.bag')
 
 def signal_handler(sig, frame):
     global recording
@@ -71,21 +92,24 @@ def main():
 
     if mappingStage:
         map_name = input("Enter the name of the map file to create (without extension): ")
-        map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_name}.db')
+        # map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_name}.db')
+        map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
 
-        print("Creating new map...")
-        subprocess.Popen(['roslaunch', './launch/realsense_create_new_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print("Creating new map...", map_file_path)
+        subprocess.Popen(['roslaunch', './launch/realsense_create_new_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     else:
         # Show saved maps
         print("These are the saved maps:")
-        saved_maps = os.listdir(os.path.join(script_dir, 'saved_maps'))
+        # saved_maps = os.listdir(os.path.join(script_dir, 'saved_maps'))
+        saved_maps = os.listdir(saved_maps_dir)
         print(saved_maps)
 
         map_name = input("Enter the name of the map file to load (without extension): ")
-        map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_name}.db')
+        # map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_name}.db')
+        map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
 
-        print("Loading map from file...")
-        subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print("Loading map from file...", map_file_path)
+        subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
 
     input("Press Enter to start recording\n")
