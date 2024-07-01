@@ -12,6 +12,8 @@ recording = True
 
 file_name = 'bag_dict.json'
 
+map_file = 'default_map.db'
+
 def signal_handler(sig, frame):
     global recording
     print("\nStopping recording...")
@@ -42,6 +44,8 @@ def get_user_info():
     return group_name, operator_name, task
 
 def main():
+    global map_file
+
     signal.signal(signal.SIGINT, signal_handler)
 
     # Set the current time for the filename
@@ -113,7 +117,8 @@ def main():
         "group_name": group,
         "operator_name": operator,
         "time_stamp": now,
-        "task": task if len(task) > 0 else "empty"
+        "task": task if len(task) > 0 else "empty",
+        "map_file": map_file
     }
 
     data.append(entry)
