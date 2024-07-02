@@ -25,9 +25,6 @@ def main():
 
 	signal.signal(signal.SIGINT, signal_handler)
 
-	# Source the setup.bash file
-	# subprocess.run(['source', '/catkin_ws/devel/setup.bash'], shell=True)
-
 	subprocess.run(['rosparam', 'set', 'use_sim_time', 'true'])
 
 	# Show saved maps
@@ -58,8 +55,6 @@ def main():
 		print("No rosbag file specified. Exiting.")
 		sys.exit(1)
 
-	# Sleep to keep the script running
-	# time.sleep(3000 * 3600)
 	input("Press Enter to exit...")
 
 	print("Killing rosnode processes")

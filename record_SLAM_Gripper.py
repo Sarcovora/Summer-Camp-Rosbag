@@ -7,8 +7,10 @@ import time
 import datetime
 import threading
 import json
+import sys
 
 recording = True
+offline = False
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -62,6 +64,43 @@ def record_rosbag(now):
     process.terminate()
     process.wait()
 
+def replay_offline_demo():
+    signal.signal(signal.SIGINT, signal_handler)
+
+    subprocess.run(['rosparam', 'set', 'use_sim_time', 'true'])
+
+    # Show saved maps
+    print("These are the saved maps:")
+    saved_maps = os.listdir(saved_maps_dir)
+    print(saved_maps)
+
+    map_name = input("Enter the name of the map file to load (without extension): ")
+    map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
+
+    subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path, 'offline:=true'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+
+    print("Running image_transport")
+
+    # Run the image_transport republish commands
+    subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressed', 'in:=/camera/color/image_raw', 'raw', 'out:=/camera/color/image_raw'])
+    subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressedDepth', 'in:=/camera/aligned_depth_to_color/image_raw', 'raw', 'out:=/camera/aligned_depth_to_color/image_raw'])
+
+    print("Press Ctrl^C to exit")
+
+    input("Press Enter to start replaying\n")
+
+    # Play the rosbag file
+    if bag_path:
+        subprocess.run(['rosbag', 'play', bag_path, '--rate', '0.5', '--clock'])
+    else:
+        print("ERR: Couldn't find rosbag file. Exiting.")
+        sys.exit(1)
+
+    input("Press Enter to exit...")
+
+    print("Killing rosnode processes")
+    subprocess.run(['rosnode', 'kill', '--all'])
+
 def get_user_info():
     group_name = input("Please enter your group's name: ")
     operator_name = input("Please enter the operator's name: ")
@@ -69,7 +108,7 @@ def get_user_info():
     return group_name, operator_name, task
 
 def main():
-    global map_name, script_dir, bag_name, bag_path, mappingStage
+    global map_name, script_dir, bag_name, bag_path, mappingStage, offline
 
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -127,6 +166,9 @@ def main():
     subprocess.run(['rosnode', 'kill', '--all'])
 
     if (not mappingStage):
+        replay_offline_demo()
+
+        # after replay, ask to keep/delete
         delete = input("Keep this recording? [Y/n] ").lower() == 'n'
         if (delete):
             print("Deleting bag...")
