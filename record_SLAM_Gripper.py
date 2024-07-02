@@ -12,6 +12,8 @@ import sys
 recording = True
 offline = False
 
+bag_playback_rate = 0.5
+
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
 data_dir = os.path.join(script_dir, 'data')
@@ -29,6 +31,7 @@ os.makedirs(saved_mapping_dir, exist_ok=True)
 bag_name = 'default_bag'
 bag_path = 'default_path'
 map_name = 'default_map'
+map_file_path = 'default_map_file'
 mappingStage = True
 
 def generate_bag_path(now):
@@ -65,17 +68,11 @@ def record_rosbag(now):
     process.wait()
 
 def replay_offline_demo():
+    global map_file_path, bag_path, bag_playback_rate
+
     signal.signal(signal.SIGINT, signal_handler)
 
     subprocess.run(['rosparam', 'set', 'use_sim_time', 'true'])
-
-    # Show saved maps
-    print("These are the saved maps:")
-    saved_maps = os.listdir(saved_maps_dir)
-    print(saved_maps)
-
-    map_name = input("Enter the name of the map file to load (without extension): ")
-    map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
 
     subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path, 'offline:=true'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
@@ -85,13 +82,10 @@ def replay_offline_demo():
     subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressed', 'in:=/camera/color/image_raw', 'raw', 'out:=/camera/color/image_raw'])
     subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressedDepth', 'in:=/camera/aligned_depth_to_color/image_raw', 'raw', 'out:=/camera/aligned_depth_to_color/image_raw'])
 
-    print("Press Ctrl^C to exit")
-
     input("Press Enter to start replaying\n")
 
-    # Play the rosbag file
     if bag_path:
-        subprocess.run(['rosbag', 'play', bag_path, '--rate', '0.5', '--clock'])
+        subprocess.run(['rosbag', 'play', bag_path, '--rate', bag_playback_rate, '--clock'])
     else:
         print("ERR: Couldn't find rosbag file. Exiting.")
         sys.exit(1)
@@ -108,7 +102,7 @@ def get_user_info():
     return group_name, operator_name, task
 
 def main():
-    global map_name, script_dir, bag_name, bag_path, mappingStage, offline
+    global map_name, script_dir, bag_name, bag_path, mappingStage, offline, map_file_path
 
     signal.signal(signal.SIGINT, signal_handler)
 
