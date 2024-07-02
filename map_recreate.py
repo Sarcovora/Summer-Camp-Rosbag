@@ -41,35 +41,10 @@ os.makedirs(recreated_bags_dir, exist_ok=True)
 map_file_path = 'default_map_file'
 bag_path = 'default_bag_path'
 
-def generate_bag_path(now):
-    global data_dir, dict_path, bag_name, map_name
-    bag_name = f'demo_{map_name}_{now}.bag'
-    return os.path.join(recreated_bags_dir, f'recreate_demo_{map_name}_{now}.bag')
-
 def signal_handler(sig, frame):
     global recording
     print("\nStopping recording...")
     recording = False
-
-def record_rosbag(now):
-    global recording, bag_path
-    bag_path = generate_bag_path(now)
-    process = subprocess.Popen([
-        'rosbag', 'record', '-O', bag_path, '-b', '0',
-        '/camera/aligned_depth_to_color/camera_info',
-        '/camera/aligned_depth_to_color/image_raw/compressedDepth',
-        '/camera/color/camera_info',
-        '/camera/color/image_raw/compressed',
-        '/camera/imu',
-        '/camera/imu_info',
-        '/tf_static',
-        '/tf',
-        '/bariflex'
-    ])
-    while recording:
-        time.sleep(1)
-    process.terminate()
-    process.wait()
 
 def recreate_mapping():
     global map_file_path, bag_path, bag_playback_rate
