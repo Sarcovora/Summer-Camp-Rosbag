@@ -85,7 +85,7 @@ def replay_offline_demo():
     input("Press Enter to start replaying\n")
 
     if bag_path:
-        subprocess.run(['rosbag', 'play', bag_path, '--rate', bag_playback_rate, '--clock'])
+        subprocess.run(['rosbag', 'play', bag_path, '--rate', str(bag_playback_rate), '--clock'])
     else:
         print("ERR: Couldn't find rosbag file. Exiting.")
         sys.exit(1)
