@@ -20,7 +20,7 @@ saved_mapping_dir = os.path.join(data_dir, 'saved_mapping')
 dict_path = os.path.join(script_dir, 'data', 'bag_dict.json')
 
 os.makedirs(data_dir, exist_ok=True)
-# os.makedirs(saved_maps_dir, exist_ok=True)
+os.makedirs(saved_maps_dir, exist_ok=True)
 os.makedirs(saved_demos_dir, exist_ok=True)
 os.makedirs(saved_mapping_dir, exist_ok=True)
 
@@ -88,7 +88,7 @@ def main():
     # Set ROS parameters
     subprocess.run(['rosparam', 'set', 'use_sim_time', 'false'])
 
-    mappingStage = input("Would you like to create a new map? [Y/n]").lower() == 'y'
+    mappingStage = input("Would you like to create a new map? [y/N] ").lower() == 'y'
 
     if mappingStage:
         map_name = input("Enter the name of the map file to create (without extension): ")
@@ -97,19 +97,25 @@ def main():
 
         print("Creating new map...", map_file_path)
         subprocess.Popen(['roslaunch', './launch/realsense_create_new_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-    else:
-        # Show saved maps
-        print("These are the saved maps:")
-        # saved_maps = os.listdir(os.path.join(script_dir, 'saved_maps'))
-        saved_maps = os.listdir(saved_maps_dir)
-        print(saved_maps)
+    else: # DEMO stage
+        offline = input("Offline Slam? [y/N] ") == 'y'
+        if offline:
+            print("Running offline")
+            # FIXME perhaps add stuff for map stuff
+            map_name = 'no_map_used'
+        else:
+            # Show saved maps
+            print("These are the saved maps:")
+            # saved_maps = os.listdir(os.path.join(script_dir, 'saved_maps'))
+            saved_maps = os.listdir(saved_maps_dir)
+            print(saved_maps)
 
-        map_name = input("Enter the name of the map file to load (without extension): ")
-        # map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_name}.db')
-        map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
+            map_name = input("Enter the name of the map file to load (without extension): ")
+            # map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_name}.db')
+            map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
 
-        print("Loading map from file...", map_file_path)
-        subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            print("Loading map from file...", map_file_path)
+            subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
 
     input("Press Enter to start recording\n")
@@ -130,7 +136,7 @@ def main():
     subprocess.run(['rosnode', 'kill', '--all'])
 
     if (not mappingStage):
-        delete = input("Keep this recording? [Y/n]").lower() == 'n'
+        delete = input("Keep this recording? [Y/n] ").lower() == 'n'
         if (delete):
             print("Deleting bag...")
             os.remove(bag_path)
