@@ -17,16 +17,26 @@ bag_playback_rate = 0.5
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
 data_dir = os.path.join(script_dir, 'data')
-saved_maps_dir = os.path.join(script_dir, 'saved_maps')
-saved_demos_dir = os.path.join(data_dir, 'saved_demos')
-saved_mapping_dir = os.path.join(data_dir, 'saved_mapping')
+maps_dir = os.path.join(script_dir, 'maps')
+
+saved_maps_dir = os.path.join(maps_dir, 'saved_maps')
+recreated_maps_dir = os.path.join(maps_dir, 'recreated_maps')
+
+saved_demos_dir = os.path.join(data_dir, 'saved_demo_bags')
+saved_mapping_dir = os.path.join(data_dir, 'saved_mapping_bags')
+recreated_bags_dir = os.path.join(data_dir, 'recreated_demo_bags')
 
 dict_path = os.path.join(script_dir, 'data', 'bag_dict.json')
 
 os.makedirs(data_dir, exist_ok=True)
+os.makedirs(maps_dir, exist_ok=True)
+
 os.makedirs(saved_maps_dir, exist_ok=True)
+os.makedirs(recreated_maps_dir, exist_ok=True)
+
 os.makedirs(saved_demos_dir, exist_ok=True)
 os.makedirs(saved_mapping_dir, exist_ok=True)
+os.makedirs(recreated_bags_dir, exist_ok=True)
 
 bag_name = 'default_bag'
 bag_path = 'default_path'
