@@ -20,7 +20,7 @@ saved_mapping_dir = os.path.join(data_dir, 'saved_mapping')
 dict_path = os.path.join(script_dir, 'data', 'bag_dict.json')
 
 os.makedirs(data_dir, exist_ok=True)
-# os.makedirs(saved_maps_dir, exist_ok=True)
+os.makedirs(saved_maps_dir, exist_ok=True)
 os.makedirs(saved_demos_dir, exist_ok=True)
 os.makedirs(saved_mapping_dir, exist_ok=True)
 
@@ -28,15 +28,6 @@ bag_name = 'default_bag'
 bag_path = 'default_path'
 map_name = 'default_map'
 mappingStage = True
-
-# def generate_bag_path(now):
-#     global script_dir, dict_path, bag_name, map_name, mappingStage
-#     if (mappingStage):
-#         bag_name = f'mapping_{map_name}_{now}.bag'
-#         return os.path.join(script_dir, 'data', 'saved_mapping', f'mapping_{map_name}_{now}.bag')
-#     else:
-#         bag_name = f'demo_{map_name}_{now}.bag'
-#         return os.path.join(script_dir, 'data', 'saved_demos', f'demo_{map_name}_{now}.bag')
 
 def generate_bag_path(now):
     global data_dir, dict_path, bag_name, map_name, mappingStage
@@ -87,7 +78,7 @@ def main():
     # Set ROS parameters
     subprocess.run(['rosparam', 'set', 'use_sim_time', 'false'])
 
-    mappingStage = input("Would you like to create a new map? [Y/n]").lower() == 'y'
+    mappingStage = input("Would you like to create a new map? [y/N] ").lower() == 'y'
 
     if mappingStage:
         map_name = input("Enter the name of the map file to create (without extension): ")
@@ -96,7 +87,13 @@ def main():
 
         print("Creating new map...", map_file_path)
         subprocess.Popen(['roslaunch', './launch/realsense_create_new_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-    else:
+    else: # DEMO stage
+        # offline = input("Offline Slam? [y/N] ") == 'y'
+        # if offline:
+        #     print("Running offline")
+        #     # FIXME perhaps add stuff for map stuff
+        #     map_name = 'no_map_used'
+        # else:
         # Show saved maps
         print("These are the saved maps:")
         # saved_maps = os.listdir(os.path.join(script_dir, 'saved_maps'))
@@ -129,7 +126,7 @@ def main():
     subprocess.run(['rosnode', 'kill', '--all'])
 
     if (not mappingStage):
-        delete = input("Keep this recording? [Y/n]").lower() == 'n'
+        delete = input("Keep this recording? [Y/n] ").lower() == 'n'
         if (delete):
             print("Deleting bag...")
             os.remove(bag_path)

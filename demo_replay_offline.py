@@ -38,7 +38,7 @@ def main():
 	map_name = input("Enter the name of the map file to load (without extension): ")
 	map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
 
-	subprocess.Popen(['roslaunch', './launch/realsense_create_new_map.launch', 'database_path:=' + map_file_path, 'offline:=true'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+	subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path, 'offline:=true'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
 	print("Running image_transport")
 
@@ -47,6 +47,8 @@ def main():
 	subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressedDepth', 'in:=/camera/aligned_depth_to_color/image_raw', 'raw', 'out:=/camera/aligned_depth_to_color/image_raw'])
 
 	print("Press Ctrl^C to exit")
+
+	input("Press Enter to start replaying\n")
 
 	# Play the rosbag file
 	rosbag_file = sys.argv[1] if len(sys.argv) > 1 else ""
@@ -59,6 +61,9 @@ def main():
 	# Sleep to keep the script running
 	# time.sleep(3000 * 3600)
 	input("Press Enter to exit...")
+
+	print("Killing rosnode processes")
+	subprocess.run(['rosnode', 'kill', '--all'])
 
 if __name__ == "__main__":
     main()

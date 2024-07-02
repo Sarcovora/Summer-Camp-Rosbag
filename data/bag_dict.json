@@ -1,0 +1,18 @@
+[
+    {
+        "bag_name": "mapping_hometest_2024-07-02__10_03_58.bag",
+        "group_name": "eavn",
+        "operator_name": "evan",
+        "time_stamp": "2024-07-02__10_03_58",
+        "task": "empty",
+        "map_file": "hometest"
+    },
+    {
+        "bag_name": "demo_hometest_2024-07-02__11_24_48.bag",
+        "group_name": "evan",
+        "operator_name": "moretestsdemo",
+        "time_stamp": "2024-07-02__11_24_48",
+        "task": "yaytest",
+        "map_file": "hometest"
+    }
+]
