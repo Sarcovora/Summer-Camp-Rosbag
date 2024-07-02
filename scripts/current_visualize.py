@@ -20,7 +20,10 @@ def callback_fn(msg):
     current = float(re.match(r".*Iq:(-*\d+\.\d+)", msg.data).group(1))
     time_data.append(time.time() - t_start)
     current_data.append(current)
-    print(current_data[-1])
+    if len(time_data) > 1000:
+        del time_data[:100]
+        del current_data[:100]
+    # print(current_data[-1])
 
 def listener():
     rospy.init_node("current_listener", anonymous=True)
