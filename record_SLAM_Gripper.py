@@ -59,20 +59,35 @@ def signal_handler(sig, frame):
     recording = False
 
 def record_rosbag(now):
-    global recording, bag_path
+    global recording, bag_path, mappingStage
     bag_path = generate_bag_path(now)
-    process = subprocess.Popen([
-        'rosbag', 'record', '-O', bag_path, '-b', '0',
-        '/camera/aligned_depth_to_color/camera_info',
-        '/camera/aligned_depth_to_color/image_raw/compressedDepth',
-        '/camera/color/camera_info',
-        '/camera/color/image_raw/compressed',
-        '/camera/imu',
-        '/camera/gyro/imu_info',
-        '/camera/accel/imu_info',
-        '/tf_static',
-        '/bariflex'
-    ])
+
+    if mappingStage:
+        process = subprocess.Popen([
+            'rosbag', 'record', '-O', bag_path, '-b', '0',
+            '/camera/aligned_depth_to_color/camera_info',
+            '/camera/aligned_depth_to_color/image_raw',
+            '/camera/color/camera_info',
+            '/camera/color/image_raw/',
+            '/camera/imu',
+            '/camera/gyro/imu_info',
+            '/camera/accel/imu_info',
+            '/tf_static',
+            '/bariflex'
+        ])
+    else:
+        process = subprocess.Popen([
+            'rosbag', 'record', '-O', bag_path, '-b', '0',
+            '/camera/aligned_depth_to_color/camera_info',
+            '/camera/aligned_depth_to_color/image_raw/compressedDepth',
+            '/camera/color/camera_info',
+            '/camera/color/image_raw/compressed',
+            '/camera/imu',
+            '/camera/gyro/imu_info',
+            '/camera/accel/imu_info',
+            '/tf_static',
+            '/bariflex'
+        ])
     while recording:
         time.sleep(1)
     process.terminate()
