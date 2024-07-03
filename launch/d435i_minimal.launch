@@ -1,0 +1,10 @@
+<launch>
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+        <arg name="align_depth" value="true"/>
+        <arg name="linear_accel_cov" value="2.0"/>
+        <arg name="enable_accel" value="true"/>
+        <arg name="enable_gyro" value="true"/>
+        <arg name="enable_sync" value="true"/>
+        <arg name="unite_imu_method" value="linear_interpolation"/>
+    </include>
+</launch>

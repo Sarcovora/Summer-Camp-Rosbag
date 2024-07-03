@@ -68,7 +68,8 @@ def record_rosbag(now):
         '/camera/color/camera_info',
         '/camera/color/image_raw/compressed',
         '/camera/imu',
-        '/camera/imu_info',
+        '/camera/gyro/imu_info',
+        '/camera/accel/imu_info',
         '/tf_static',
         '/bariflex'
     ])
@@ -76,34 +77,6 @@ def record_rosbag(now):
         time.sleep(1)
     process.terminate()
     process.wait()
-
-def replay_offline_demo():
-    global map_file_path, bag_path, bag_playback_rate
-
-    signal.signal(signal.SIGINT, signal_handler)
-
-    subprocess.run(['rosparam', 'set', 'use_sim_time', 'true'])
-
-    subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path, 'offline:=true'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-
-    print("Running image_transport")
-
-    # Run the image_transport republish commands
-    subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressed', 'in:=/camera/color/image_raw', 'raw', 'out:=/camera/color/image_raw'])
-    subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressedDepth', 'in:=/camera/aligned_depth_to_color/image_raw', 'raw', 'out:=/camera/aligned_depth_to_color/image_raw'])
-
-    input("Press Enter to start replaying\n")
-
-    if bag_path:
-        subprocess.run(['rosbag', 'play', bag_path, '--rate', str(bag_playback_rate), '--clock'])
-    else:
-        print("ERR: Couldn't find rosbag file. Exiting.")
-        sys.exit(1)
-
-    input("Press Enter to exit...")
-
-    print("Killing rosnode processes")
-    subprocess.run(['rosnode', 'kill', '--all'])
 
 def get_user_info():
     group_name = input("Please enter your group's name: ")
@@ -130,9 +103,10 @@ def main():
         map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
 
         print("Creating new map...", map_file_path)
-        subprocess.Popen(['roslaunch', './launch/realsense_create_new_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        os.system(f'touch {map_file_path}.empty')
+
     else: # DEMO stage
-        offline = input("Offline Slam? [y/N] ") == 'y'
+        
         # Show saved maps
         print("These are the saved maps:")
         # saved_maps = os.listdir(os.path.join(script_dir, 'saved_maps'))
@@ -142,16 +116,9 @@ def main():
         map_name = input("Enter the name of the map file to load (without extension): ")
         # map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_name}.db')
         map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
-
         print("Loading map from file...", map_file_path)
-
-        if offline:
-            print("Running offline")
-            subprocess.Popen(['roslaunch', './launch/realsense_load_offline.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-        else:
-            subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + map_file_path], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-
-
+ 
+    subprocess.Popen(['roslaunch', './launch/d435i_minimal.launch'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     input("Press Enter to start recording\n")
     print("Press 's' and Enter to stop recording")
 
@@ -170,7 +137,6 @@ def main():
     subprocess.run(['rosnode', 'kill', '--all'])
 
     if (not mappingStage):
-        replay_offline_demo()
 
         # after replay, ask to keep/delete
         delete = input("Keep this recording? [Y/n] ").lower() == 'n'
@@ -194,7 +160,8 @@ def main():
         "operator_name": operator,
         "time_stamp": now,
         "task": task if len(task) > 0 else "empty",
-        "map_file": map_name
+        "map_file": map_name,
+        "is_mapping_bag": mappingStage
     }
 
     data.append(entry)

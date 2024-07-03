@@ -69,7 +69,8 @@ def record_rosbag(now):
         '/camera/color/image_raw/compressed',
         '/camera/imu',
         '/camera/imu_info',
-        '/tf_static'
+        '/tf_static',
+        '/bariflex'
     ])
     while recording:
         time.sleep(1)
