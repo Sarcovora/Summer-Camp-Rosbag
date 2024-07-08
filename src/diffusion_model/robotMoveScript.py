@@ -25,7 +25,6 @@ class SawyerEnv():
 
         rospy.Subscriber('/bariflex', String, self.callback_fn)
 
-
         #self.pipeline = rs.pipeline()
         #self.config = rs.config()
         
