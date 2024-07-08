@@ -75,23 +75,23 @@ class Runner():
         color_image = transform(color_image)
         depth_image = transform(depth_image)
 
-        bariflex_state = robotMoveScript.get_bariflex_state(self)
+        gripper_pos = SawyerEnv.get_bariflex_state(self)
 
-        return  color_image, depth_image, bariflex_state
+        return  color_image, depth_image, gripper_pos
 
     def get_starting_arrays(self):
-        pose, orientation, image = self.get_current_state()
-        pose_array, orientation_array, image_array = [], [], []
+        color_image, depth_image, gripper_pos = self.get_current_state()
+        color_image_array, depth_image_array, gripper_pos_array = [], [], []
 
         for i in range(self.obs_horizon):
-            pose_array.append(pose)
-            orientation_array.append(orientation)
-            image_array.append(image)
+            color_image_array.append(color_image)
+            depth_image_array.append(depth_image)
+            gripper_pos_array.append(float(gripper_pos))
 
-        return pose_array, orientation_array, image_array
+        return color_image_array, depth_image_array, gripper_pos_array
 
     def run(self, num_passes=2):
-        pos_arr, or_arr, im_arr = self.get_starting_arrays()
+        colorimg_arr, depthimg_arr, gripperpos_arr = self.get_starting_arrays()
 
         noise_scheduler = DDPMScheduler(
             num_train_timesteps=100,
@@ -101,22 +101,25 @@ class Runner():
             )
         
         for i in range(num_passes):
-            pos_tensor = torch.stack(pos_arr, dim=0).unsqueeze(0).squeeze(2)
-            or_tensor = torch.stack(or_arr, dim=0).unsqueeze(0).squeeze(2)
-            im_tensor = torch.stack(im_arr, dim=0).unsqueeze(0).squeeze(2)
+            colorimg_tensor = torch.stack(colorimg_arr, dim=0).unsqueeze(0).squeeze(2)
+            depthimg_tensor = torch.stack(depthimg_arr, dim=0).unsqueeze(0).squeeze(2)
+            gripperpos_tensor = torch.stack(gripperpos_arr, dim=0).unsqueeze(0).squeeze(2)
 
-            pos_tensor = dataset.normalize(pos_tensor, self.pose_stats).to(self.device)
-            or_tensor = dataset.normalize(or_tensor, self.orientation_stats).to(self.device)
-            im_tensor = dataset.normalize(im_tensor, self.image_stats).to(self.device)
+            colorimg_tensor = dataset.normalize(colorimg_tensor, self.pose_stats).to(self.device)
+            depthimg_tensor = dataset.normalize(depthimg_tensor, self.orientation_stats).to(self.device)
+            gripperpos_tensor = dataset.normalize(gripperpos_tensor, self.image_stats).to(self.device)
 
 
-            image = im_tensor.reshape(1, self.obs_horizon, 3, 96, 96)
-            agent_pos = torch.cat((pos_tensor, or_tensor), dim=2).reshape(1, self.obs_horizon, 7)
+            new_color_image = colorimg_tensor.reshape(1, self.obs_horizon, 3, 96, 96)
+            new_depth_image = depthimg_tensor.reshape(1, self.obs_horizon, 3, 96, 96)
+            agent_pos = torch.cat((gripperpos_tensor), dim=2).reshape(1, self.obs_horizon, 7)
             B = agent_pos.shape[0]
 
-            image_features = self.nets["vision_encoder"](image.flatten(end_dim=1))
-            image_features = image_features.reshape(*image.shape[:2],-1)
-            obs_features = torch.cat([image_features, agent_pos], dim=-1)
+            color_image_features = self.nets["vision_encoder"](new_color_image.flatten(end_dim=1))
+            color_image_features = color_image_features.reshape(*new_color_image.shape[:2],-1)
+            depth_image_features = self.nets["vision_encoder"](new_depth_image.flatten(end_dim=1))
+            depth_image_features = depth_image_features.reshape(*new_depth_image.shape[:2],-1)
+            obs_features = torch.cat([color_image_features, depth_image_features, agent_pos], dim=-1)
             obs_cond = obs_features.flatten(start_dim=1)
 
             noisy_action = torch.randn((1, self.pred_horizon, 7), device=self.device)
@@ -152,15 +155,15 @@ class Runner():
                         current_or[1].item(), current_or[2].item(), 
                         current_or[3].item()])
 
-                    pos_arr.pop(0)
-                    or_arr.pop(0)
-                    im_arr.pop(0)
+                    colorimg_arr.pop(0)
+                    depthimg_arr.pop(0)
+                    gripperpos_arr.pop(0)
 
                     new_pose, new_orientation, new_image = self.get_current_state()
 
-                    pos_arr.append(new_pose)
-                    or_arr.append(new_orientation)
-                    im_arr.append(new_image)
+                    colorimg_arr.append(new_pose)
+                    depthimg_arr.append(new_orientation)
+                    gripperpos_arr.append(new_image)
                 except:
                     continue
                 
