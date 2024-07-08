@@ -75,7 +75,9 @@ class Runner():
         color_image = transform(color_image)
         depth_image = transform(depth_image)
 
-        return  color_image, depth_image
+        bariflex_state = robotMoveScript.get_bariflex_state(self)
+
+        return  color_image, depth_image, bariflex_state
 
     def get_starting_arrays(self):
         pose, orientation, image = self.get_current_state()

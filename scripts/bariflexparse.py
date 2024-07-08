@@ -82,8 +82,6 @@ def main():
 
     rospy.Subscriber('/camera/color/image_raw', Image, color_image_callback)
     rospy.Subscriber('/camera/aligned_depth_to_color/image_raw', Image, depth_image_callback)
-    rospy.Subscriber('/bariflex', String, callback_fn)
-
 
     # tf lookup setup
     tf_buffer = tf2_ros.Buffer()
