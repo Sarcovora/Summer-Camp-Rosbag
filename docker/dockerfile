@@ -1,0 +1,13 @@
+FROM ros:noetic
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -yq --no-install-recommends
+RUN apt-get update
+RUN apt-get install -y ros-noetic-cv-bridge ros-noetic-vision-opencv
+
+RUN bash /opt/ros/noetic/setup.bash
+RUN apt-get install -y ros-$(rosversion -d)-turtlesim
+
+RUN echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
+RUN echo "alias python=python3" >> ~/.bashrc
+
+RUN apt-get update
+RUN apt-get install -y ros-noetic-tf ros-noetic-tf2-geometry-msgs 
