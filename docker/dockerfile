@@ -11,3 +11,35 @@ RUN echo "alias python=python3" >> ~/.bashrc
 
 RUN apt-get update
 RUN apt-get install -y ros-noetic-tf ros-noetic-tf2-geometry-msgs 
+
+# sawyer
+RUN apt-get install -y python3-rosdep python3-rosinstall python3-rosinstall-generator python3-wstool build-essential
+RUN apt-get install -y git-core python3-wstool python3-vcstools python3-rosdep ros-noetic-control-msgs  ros-noetic-xacro ros-noetic-tf2-ros ros-noetic-rviz ros-noetic-cv-bridge ros-noetic-actionlib ros-noetic-actionlib-msgs ros-noetic-dynamic-reconfigure ros-noetic-trajectory-msgs ros-noetic-rospy-message-converter
+RUN apt-get install -y python3-pip
+RUN python3 -m pip install argparse
+
+WORKDIR /ros_ws/src
+RUN wstool init .
+RUN git clone https://github.com/RethinkRobotics/sawyer_robot.git
+RUN wstool merge sawyer_robot/sawyer_robot.rosinstall
+RUN wstool update
+RUN /bin/bash -c ". /ros_entrypoint.sh; cd /ros_ws/; catkin_make"
+
+# gazebo 
+RUN sudo apt-get -y install gazebo11 ros-noetic-gazebo-ros  ros-noetic-gazebo-ros-control ros-noetic-gazebo-ros-pkgs ros-noetic-ros-control ros-noetic-control-toolbox ros-noetic-realtime-tools ros-noetic-ros-controllers ros-noetic-xacro python3-wstool ros-noetic-tf-conversions ros-noetic-kdl-parser
+RUN sudo apt-get -y install git ros-noetic-roslint
+
+RUN mkdir -p /ros_ws/src
+WORKDIR /ros_ws/src
+RUN git clone https://github.com/RethinkRobotics/sawyer_simulator.git -b noetic_devel
+RUN git clone https://github.com/RethinkRobotics-opensource/sns_ik.git -b melodic-devel
+WORKDIR /ros_ws/src
+
+RUN /bin/bash /opt/ros/noetic/setup.bash
+WORKDIR /ros_ws
+RUN /bin/bash -c ". /ros_entrypoint.sh; cd /ros_ws/; catkin_make"
+
+RUN cp /ros_ws/src/intera_sdk/intera.sh /ros_ws
+
+RUN apt-get install -y python-is-python3 ros-noetic-robot-state-publisher
+RUN sed -i 's/kinetic/noetic/g' /ros_ws/intera.sh
