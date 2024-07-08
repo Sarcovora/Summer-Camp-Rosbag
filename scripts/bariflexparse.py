@@ -71,6 +71,10 @@ def depth_image_callback(data):
     except CvBridgeError as e:
         rospy.logerr("CvBridge Error: {0}".format(e))
 
+def callback_fn(msg):
+    current = float(re.match(r".Iq-*\d+\.\d+)", msg.data).group(1))
+    print(current)
+
 def main():
     global colorDeque, colorCyclesOffset, depthDeque, depthCycleOffset
 
@@ -78,7 +82,7 @@ def main():
 
     rospy.Subscriber('/camera/color/image_raw', Image, color_image_callback)
     rospy.Subscriber('/camera/aligned_depth_to_color/image_raw', Image, depth_image_callback)
-
+    rospy.Subscriber('/bariflex', String, callback_fn)
 
 
     # tf lookup setup
