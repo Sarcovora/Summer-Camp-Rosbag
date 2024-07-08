@@ -75,7 +75,7 @@ class Runner():
         color_image = transform(color_image)
         depth_image = transform(depth_image)
 
-        bariflex_state = robotMoveScript.get_bariflex_state(self)
+        bariflex_state = SawyerEnv.get_bariflex_state(self)
 
         return  color_image, depth_image, bariflex_state
 
