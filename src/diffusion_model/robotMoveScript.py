@@ -14,6 +14,7 @@ import math
 import time 
 import pyrealsense2 as rs
 import cv2
+from std_msgs.msg import String
 
 
 class SawyerEnv():
@@ -21,6 +22,9 @@ class SawyerEnv():
         rospy.init_node('go_to_cartesian_pose_py')
         self.limb = Limb()
         self.tip_name = "right_hand"
+
+        rospy.Subscriber('/bariflex', String, self.callback_fn)
+
 
         #self.pipeline = rs.pipeline()
         #self.config = rs.config()
@@ -33,6 +37,14 @@ class SawyerEnv():
         #self.pipeline.start(self.config)
         self.rate = rospy.Rate(10)
     
+    def callback_fn(self, msg):
+        current = float(re.match(r".Iq-*\d+\.\d+)", msg.data).group(1))
+        print(current)
+        self.bariflex_state = current
+
+    def get_bariflex_state(self):
+        return self.bariflex_state
+
     # closes the camera
     def reset(self):
         self.pipeline.stop()
