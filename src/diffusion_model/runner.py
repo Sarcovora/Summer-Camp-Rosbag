@@ -57,21 +57,25 @@ class Runner():
         self.nets.eval()
 
     def get_current_state(self):
-        endpoint_pose = self.limb.endpoint_pose()
-        pose, orientation = endpoint_pose["position"], endpoint_pose["orientation"]
+        # endpoint_pose = self.limb.endpoint_pose()
+        # pose, orientation = endpoint_pose["position"], endpoint_pose["orientation"]
 
-        pose = torch.tensor(list(pose)).reshape(1, -1)
-        orientation = torch.tensor(list(orientation)).reshape(1, -1)
+        # pose = torch.tensor(list(pose)).reshape(1, -1)
+        # orientation = torch.tensor(list(orientation)).reshape(1, -1)
 
-        image = torch.from_numpy(self.camera.get_frame()).float()
-        image = image.reshape(3, 640, 480)
+        color_image = torch.from_numpy(self.camera.get_frame()).float()
+        color_image = color_image.reshape(3, 640, 480)
+
+        depth_image = torch.from_numpy(self.camera.get_depth_frame()).float()
+        depth_image = depth_image.reshape(3, 640, 480)
 
         transform = torchvision.transforms.Resize((96, 96),
               interpolation=torchvision.transforms.InterpolationMode.BILINEAR)
         
-        image = transform(image)
+        color_image = transform(color_image)
+        depth_image = transform(depth_image)
 
-        return pose, orientation, image
+        return  color_image, depth_image
 
     def get_starting_arrays(self):
         pose, orientation, image = self.get_current_state()
