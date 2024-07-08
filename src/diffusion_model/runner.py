@@ -69,7 +69,7 @@ class Runner():
         depth_image = torch.from_numpy(self.camera.get_depth_frame()).float()
         depth_image = depth_image.reshape(3, 640, 480)
 
-        transform = torchvision.transforms.Resize((96, 96),
+        transform = torchvision.transforms.Resize((96, 96), #Get reshape numbers from group 3 and change them
               interpolation=torchvision.transforms.InterpolationMode.BILINEAR)
         
         color_image = transform(color_image)
