@@ -62,7 +62,7 @@ class SawyerEnv():
         else:
             position = (float(msg.data[14:18]))
         
-        print("des: " + desire + " pos: " + position + " Iq: " + current)
+        # print("des: " + desire + " pos: " + position + " Iq: " + current)
         self.bariflex_state = position
 
     def get_bariflex_state(self):
