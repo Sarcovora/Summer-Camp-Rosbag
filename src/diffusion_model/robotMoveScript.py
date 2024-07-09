@@ -43,24 +43,24 @@ class SawyerEnv():
     # position = deque()
 
     def callback_fn(self, msg):
-        current = float(re.match(r".Iq-*\d+\.\d+)", msg.data).group(1))
-        desire = float(re.match(r".des-*\d+\.\d+)", msg.data).group(1))
-        position = float(re.match(r".pos-*\d+\.\d+)", msg.data).group(1))
+        # current = float(re.match(r".Iq-*\d+\.\d+)", msg.data).group(1))
+        # desire = float(re.match(r".des-*\d+\.\d+)", msg.data).group(1))
+        # position = float(re.match(r".pos-*\d+\.\d+)", msg.data).group(1))
 
-        # if msg.data[-5] == '-':
-        #     SawyerEnv.current.append(float(msg.data[-5:]))
-        # else:
-        #     SawyerEnv.current.append(float(msg.data[-4:]))
+        if msg.data[-5] == '-':
+            current = (float(msg.data[-5:]))
+        else:
+            current = (float(msg.data[-4:]))
 
-        # if msg.data[-3] == '-':
-        #     SawyerEnv.desire.append(float(msg.data[-3:]))
-        # else:
-        #     SawyerEnv.desire.append(float(msg.data[-2:]))
+        if msg.data[4] == '-':
+            desire = (float(msg.data[4:9]))
+        else:
+            desire = (float(msg.data[4:8]))
 
-        # if msg.data[-1] == '-':
-        #     SawyerEnv.position.append(float(msg.data[-1:]))
-        # else:
-        #     SawyerEnv.position.append(float(msg.data[0:]))
+        if msg.data[14] == '-':
+            position = (float(msg.data[14:19]))
+        else:
+            position = (float(msg.data[14:18]))
         
         print("des: " + desire + " pos: " + position + " Iq: " + current)
         self.bariflex_state = SawyerEnv.current
