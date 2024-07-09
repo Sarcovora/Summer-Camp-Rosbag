@@ -56,12 +56,6 @@ def recreate_mapping():
     # print('roslaunch', './launch/create_new_map.launch', 'database_path:=' + map_file_path, 'offline:=true')
     subprocess.Popen(['roslaunch', './launch/realsense_create_new_map.launch', 'database_path:=' + map_file_path, 'offline:=true'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
-    # print("Running image_transport")
-
-    # Run the image_transport republish commands
-    # subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressed', 'in:=/camera/color/image_raw', 'raw', 'out:=/camera/color/image_raw'])
-    # subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressedDepth', 'in:=/camera/aligned_depth_to_color/image_raw', 'raw', 'out:=/camera/aligned_depth_to_color/image_raw'])
-
     if bag_path:
         subprocess.run(['rosbag', 'play', bag_path, '--rate', str(bag_playback_rate), '--clock'])
     else:

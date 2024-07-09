@@ -119,7 +119,7 @@ def main():
         map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
 
         print("Creating new map...", map_file_path)
-        os.system(f'touch {map_file_path}.empty')
+        os.system(f'touch {map_file_path}.emp')
 
     else: # DEMO stage
         
