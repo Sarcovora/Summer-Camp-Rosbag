@@ -17,7 +17,7 @@ def get_pad_obs(demo, num_times_zero, index, color_stats, depth_stats, gripper_s
   '''
   temp_color_list = []
   temp_depth_list = []
-  temp_gripper_state_list = []
+  temp_gripper_pos_list = []
   for x in range(num_times_zero):
     # pads the necessary amount of times
     color = torch.from_numpy(demo[0]["image_color"])
@@ -30,10 +30,10 @@ def get_pad_obs(demo, num_times_zero, index, color_stats, depth_stats, gripper_s
     temp_depth_list.append(depth)
     
 
-    gripper_state = torch.from_numpy(demo[0]["gripper_state"])
+    gripper_pos = torch.from_numpy(demo[0]["gripper_pos"])
 
     temp_grip = normalize(temp_grip, gripper_stats)
-    temp_gripper_state_list.append(gripper_state)
+    temp_gripper_pos_list.append(gripper_pos)
 
   idx = 1
 
@@ -47,11 +47,11 @@ def get_pad_obs(demo, num_times_zero, index, color_stats, depth_stats, gripper_s
     temp_depth_list.append(depth)
     
     temp_color_list.append(color)
-    temp_grip = torch.from_numpy(demo[idx]["gripper_state"])
+    temp_grip = torch.from_numpy(demo[idx]["gripper_pos"])
     temp_grip = normalize(temp_grip, gripper_stats)
   
 
-    temp_gripper_state_list.append(gripper_state)
+    temp_gripper_pos_list.append(gripper_pos)
 
     idx += 1
 
@@ -60,7 +60,7 @@ def get_pad_obs(demo, num_times_zero, index, color_stats, depth_stats, gripper_s
   transform = transforms.Resize((96, 96),
               interpolation=transforms.InterpolationMode.BILINEAR)
   depth_obs = transform(depth_obs)
-  gripper_obs = torch.stack(temp_gripper_state_list)
+  gripper_obs = torch.stack(temp_gripper_pos_list)
   color_obs = torch.stack(temp_color_list)
   color_obs = transform(color_obs)
 
@@ -75,7 +75,7 @@ def get_obs(demo, start_idx, index, color_stats, depth_stats, gripper_stats):
   '''
   temp_color_list = []
   temp_depth_list = []
-  temp_gripper_state_list = []
+  temp_gripper_pos_list = []
 
   idx = start_idx
 
@@ -84,11 +84,11 @@ def get_obs(demo, start_idx, index, color_stats, depth_stats, gripper_stats):
     color = normalize(color, color_stats)
 
     temp_color_list.append(color)
-    temp_gripper_state = torch.from_numpy(demo[idx]["gripp"])
+    temp_gripper_pos = torch.from_numpy(demo[idx]["gripper_pos"])
 
 
-    temp_gripper_state = normalize(temp_gripper_state_list, gripper_stats)
-    temp_gripper_state_list.append(temp_gripper_state)
+    temp_gripper_pos = normalize(temp_gripper_pos_list, gripper_stats)
+    temp_gripper_pos_list.append(temp_gripper_pos)
 
     idx += 1
 
@@ -97,7 +97,7 @@ def get_obs(demo, start_idx, index, color_stats, depth_stats, gripper_stats):
   transform = transforms.Resize((96, 96),
               interpolation=transforms.InterpolationMode.BILINEAR)
   depth_obs = transform(depth_obs)
-  gripper_obs = torch.stack(temp_gripper_state_list)
+  gripper_obs = torch.stack(temp_gripper_pos_list)
   color_obs = torch.stack(temp_color_list)
   color_obs = transform(color_obs)
 
@@ -130,7 +130,7 @@ def get_action(demo, pred_horizon, start_idx):
 
    
 
-    temp_action_list.append(demo[index]["action"])
+    temp_action_list.append(demo[index]["actions"])
 
     count += 1
     index += 1
@@ -197,7 +197,7 @@ class DiffDataset(Dataset):
       self.color_stats = color_stats
 
     if (depth_stats == None):
-      self.depth_stats = {"min" : 0, "max" : 255}
+      self.depth_stats = {"min" : 0, "max" : 255} #not sure if depth image should be compressed to 255
     else:
       self.depth_stats = depth_stats
 
@@ -234,8 +234,8 @@ class DiffDataset(Dataset):
 
         temp["image_color"] = color_obs
         temp["image_depth"] = depth_obs
-        temp["gripper_state"] = gripper_obs
-        temp["action"] = action_pred
+        temp["gripper_pos"] = gripper_obs
+        temp["actions"] = action_pred
         self.dataset.append(temp)
 
   def __len__(self):
@@ -254,7 +254,7 @@ class DiffDataset(Dataset):
 
     nsample["color"] = (temp["color"])
     nsample["depth"] = (temp["depth"])
-    nsample["agent_pos"] = temp["agent_pos"].squeeze(1).float()
-    nsample["action"] = temp["action"].squeeze(1).float()
+    nsample["gripper_pos"] = temp["gripper_pos"].squeeze(1).float()
+    nsample["actions"] = temp["actions"].squeeze(1).float()
 
     return nsample
