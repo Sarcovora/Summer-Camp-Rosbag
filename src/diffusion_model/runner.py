@@ -159,11 +159,11 @@ class Runner():
                     depthimg_arr.pop(0)
                     gripperpos_arr.pop(0)
 
-                    new_pose, new_orientation, new_image = self.get_current_state()
+                    new_colorimg, new_depthimg, new_gripperpos = self.get_current_state()
 
-                    colorimg_arr.append(new_pose)
-                    depthimg_arr.append(new_orientation)
-                    gripperpos_arr.append(new_image)
+                    colorimg_arr.append(new_colorimg)
+                    depthimg_arr.append(new_depthimg)
+                    gripperpos_arr.append(new_gripperpos)
                 except:
                     continue
                 
