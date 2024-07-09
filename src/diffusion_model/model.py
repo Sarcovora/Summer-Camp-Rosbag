@@ -12,7 +12,8 @@ from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.training_utils import EMAModel
 from diffusers.optimization import get_scheduler
 from tqdm.auto import tqdm
-
+from stable_baselines3.common.torch_layers import NatureCNN
+import gymnasium as gym
 
 #@markdown ### **Network**
 #@markdown
@@ -270,6 +271,19 @@ class ConditionalUnet1D(nn.Module):
         return x
 
 
+### add sb3 NatureCNN image encoder
+def get_cnn(name:str, observation_space=
+            gym.spaces.Box(low=0, high=255, shape=(1, 96, 96), 
+                           dtype=np.uint8), 
+            **kwargs) -> nn.Module:
+    """
+    name: nature_cnn
+    """
+    if name == "nature_cnn":
+        return NatureCNN(observation_space, **kwargs)
+    else:
+        raise ValueError("Unknown CNN name")
+
 #@markdown ### **Vision Encoder**
 #@markdown
 #@markdown Defines helper functions:
@@ -352,9 +366,9 @@ def load_pretrained(save_file="checkpoint.pth", device="cpu", obs_horizon=16):
     vision_encoder = replace_bn_with_gn(vision_encoder)
 
     vision_feature_dim = 512
-    lowdim_obs_dim = 7
+    lowdim_obs_dim = 1 # gripper
     obs_dim = vision_feature_dim + lowdim_obs_dim
-    action_dim = 7
+    action_dim = 8 # (X, Y, Z, x, y, z, w, gripper)
 
     noise_pred_net = ConditionalUnet1D(
         input_dim=action_dim,

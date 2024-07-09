@@ -1,0 +1,13 @@
+vision_encoder_kwargs:
+  vision_feature_dim: 512
+  lowdim_obs_dim: 1
+  action_dim: 8
+
+pred_horizon: 4
+obs_horizon: 6
+execution_horizon: 2  # for now half of the obs_horizon
+
+# swap out batchnorm for groupnorm in resnet
+
+### Calculate obs_dim in script 
+# obs_dim : vision_feature_dim * 2 + lowdim_obs_dim

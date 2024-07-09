@@ -1,0 +1,6 @@
+lr_scheduler:
+  name: cosine
+  num_warmup_steps: 500
+
+noise_scheduler:
+  num_diffusion_iters: 100

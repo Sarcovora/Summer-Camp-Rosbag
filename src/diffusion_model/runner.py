@@ -26,8 +26,11 @@ import zarr
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.training_utils import EMAModel
 from diffusers.optimization import get_scheduler
-
+import hydra
+import os
 from helper_functions import get_into_dataloader_format
+
+CONFIG = os.path.join(os.getcwd(), 'config')
 
 class Runner():
     def __init__(self, side="right", obs_horizon=6, pred_horizon=4, #pred horizon must be a multiple of 4
@@ -157,13 +160,14 @@ class Runner():
                     im_arr.append(new_image)
                 except:
                     continue
-                
-
-
-if __name__ == "__main__":
+@hydra.main(config_path=CONFIG, config_name="config", version_base="1.3.2")        
+def main(cfg):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Device: {device}")
 
     runner = Runner(device=device)
 
     runner.run(num_passes=1)
+
+if __name__ == "__main__":
+    main()

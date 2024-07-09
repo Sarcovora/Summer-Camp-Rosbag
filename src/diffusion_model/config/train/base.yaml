@@ -1,0 +1,8 @@
+defaults:
+  - optim: base
+  - scheduler: base
+
+num_epochs: 20
+batch_size: 64
+device: cpu
+save_file: checkpoint.pth
