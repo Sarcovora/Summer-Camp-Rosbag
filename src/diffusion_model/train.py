@@ -1,4 +1,3 @@
-# file imports
 import dataset
 import model
 
@@ -16,6 +15,25 @@ from diffusers.training_utils import EMAModel
 from diffusers.optimization import get_scheduler
 
 from helper_functions import get_into_dataloader_format
+
+class DepthCNN(nn.Module):
+    def __init__(self):
+        super(DepthCNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)
+        self.fc1 = nn.Linear(128 * 64 * 64, 512)  # Adjust the dimensions based on your depth image size
+
+    def forward(self, x):
+        x = nn.ReLU()(self.conv1(x))
+        x = nn.MaxPool2d(kernel_size=2, stride=2)(x)
+        x = nn.ReLU()(self.conv2(x))
+        x = nn.MaxPool2d(kernel_size=2, stride=2)(x)
+        x = nn.ReLU()(self.conv3(x))
+        x = nn.MaxPool2d(kernel_size=2, stride=2)(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc1(x)
+        return x
 
 # Class to handle training model, saves important data
 class Trainer():
@@ -37,16 +55,13 @@ class Trainer():
         self.lr = learning_rate
         self.save_file = save_file
 
-
     def get_dataloader(self):
         '''
         Gets the dataloader for the training set.
         '''
         diff_dataset = dataset.DiffDataset(self.demos, self.obs_horizon, self.pred_horizon, self.pose_stats, 
-                                self.orientation_stats, self.img_stats)
+                                           self.orientation_stats, self.img_stats)
         return torch.utils.data.DataLoader(diff_dataset, batch_size=self.batch_size, shuffle=True)
-
-
 
     def get_model(self):
         '''
@@ -55,18 +70,22 @@ class Trainer():
         vision_encoder = model.get_resnet("resnet18")
         vision_encoder = model.replace_bn_with_gn(vision_encoder)
 
+        depth_cnn = DepthCNN()
+
         vision_feature_dim = 512
+        depth_feature_dim = 512
         lowdim_obs_dim = 7
-        obs_dim = vision_feature_dim + lowdim_obs_dim
-        action_dim = 7
+        obs_dim = vision_feature_dim + depth_feature_dim + lowdim_obs_dim
+        action_dim = 8
 
         noise_pred_net = model.ConditionalUnet1D(
             input_dim=action_dim,
-            global_cond_dim=obs_dim*self.obs_horizon
+            global_cond_dim=obs_dim * self.obs_horizon
         )
 
         nets = nn.ModuleDict({
             'vision_encoder': vision_encoder,
+            'depth_cnn': depth_cnn,
             'noise_pred_net': noise_pred_net
         })
 
@@ -100,7 +119,7 @@ class Trainer():
         min_epoch = 0
 
         trainloader = self.get_dataloader()
-        nets, ema = self.get_model() if not checkpoint else model.load_pretrained(checkpoint, device, self.obs_horizon)
+        nets, ema = self.get_model() if not checkpoint else model.load_pretrained(checkpoint, self.device, self.obs_horizon)
         noise_scheduler = self.get_noise_scheduler(num_diffusion_iters)
 
         optimizer = torch.optim.AdamW(
@@ -121,14 +140,20 @@ class Trainer():
         for epoch in range(num_epochs):
             total_loss = 0.0
             for batch in trainloader:
-                image = batch["image"].to(self.device)
-                agent_pos = batch["agent_pos"].to(self.device)
-                action = batch["action"].to(self.device)
+                
+                rgb_image = batch["image_color"].to(self.device)
+                depth_image = batch["image_depth"].to(self.device)
+                agent_pos = batch["gripper_pos"].to(self.device)
+                action = batch["actions"].to(self.device)
                 B = agent_pos.shape[0]
 
-                image_features = nets["vision_encoder"](image.flatten(end_dim=1))
-                image_features = image_features.reshape(*image.shape[:2],-1)
-                obs_features = torch.cat([image_features, agent_pos], dim=-1)
+                image_features = nets["vision_encoder"](rgb_image.flatten(end_dim=1))
+                image_features = image_features.reshape(*rgb_image.shape[:2], -1)
+                
+                depth_features = nets["depth_cnn"](depth_image.flatten(end_dim=1))
+                depth_features = depth_features.reshape(*depth_image.shape[:2], -1)
+                
+                obs_features = torch.cat([image_features, depth_features, agent_pos], dim=-1)
                 obs_cond = obs_features.flatten(start_dim=1)
 
                 noise = torch.randn(action.shape, device=self.device)
@@ -153,7 +178,6 @@ class Trainer():
                 ema.step(nets.parameters())
 
                 loss_cpu = loss.item()
-
                 total_loss += loss_cpu
             
             if print_stats:
@@ -187,11 +211,10 @@ if __name__ == "__main__":
     with open("stats.json", "w") as file:
         json.dump(stats_dict, file, indent=4)
 
-
     pred_horizon = 4
     obs_horizon = 6
 
-    print(dataset_list[0][0]["image"].shape)
+    print(dataset_list[0][0]["rgb_image"].shape)
     print(dataset_list[0][0]["position"].shape)
     print(dataset_list[0][0]["orientation"].shape)
 
@@ -201,32 +224,10 @@ if __name__ == "__main__":
     dataloader = trainer.get_dataloader()
     print(f"Length of Dataloader: {len(dataloader)}")
     for batch in dataloader:
-        print(batch["image"].shape)
+        print(batch["rgb_image"].shape)
         print(batch["agent_pos"].shape)
         print(batch["action"].shape)
         break
 
-
     print("\nTraining...\n")
     trainer.train(checkpoint=None, num_epochs=200, print_stats=True)
-
-    # For debugging
-    # test = []
-    # for i in range(5):
-    #     test.append([])
-    #     for x in range(5):
-    #         temp = {}
-    #         temp["image"] = np.random.randint(0, 255, size=(3, 666, 100))
-    #         temp["position"] = np.random.rand(1, 3)
-    #         temp["orientation"] = np.random.rand(1, 4) * 2 - 1
-    #         test[i].append(temp)
-
-    # print(test[0][0]["image"].shape)
-    # print(test[0][0]["position"].shape)
-    # print(test[0][0]["orientation"].shape)
-
-    # pose_stats = {"min" : 0, "max": 1}
-    # orientation_stats = {"min" : -1, "max" : 1}
-    # image_stats = {"min" : 0, "max" : 255}
-
-    # trainer.train(num_epochs=2, print_stats=True)
