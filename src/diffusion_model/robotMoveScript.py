@@ -16,6 +16,7 @@ import pyrealsense2 as rs
 import cv2
 import re
 from std_msgs.msg import String
+from collections import deque
 
 
 class SawyerEnv():
@@ -37,10 +38,32 @@ class SawyerEnv():
         #self.pipeline.start(self.config)
         self.rate = rospy.Rate(10)
     
+    # current = deque()
+    # desire = deque()
+    # position = deque()
+
     def callback_fn(self, msg):
         current = float(re.match(r".Iq-*\d+\.\d+)", msg.data).group(1))
-        print(current)
-        self.bariflex_state = current
+        desire = float(re.match(r".des-*\d+\.\d+)", msg.data).group(1))
+        position = float(re.match(r".pos-*\d+\.\d+)", msg.data).group(1))
+
+        # if msg.data[-5] == '-':
+        #     SawyerEnv.current.append(float(msg.data[-5:]))
+        # else:
+        #     SawyerEnv.current.append(float(msg.data[-4:]))
+
+        # if msg.data[-3] == '-':
+        #     SawyerEnv.desire.append(float(msg.data[-3:]))
+        # else:
+        #     SawyerEnv.desire.append(float(msg.data[-2:]))
+
+        # if msg.data[-1] == '-':
+        #     SawyerEnv.position.append(float(msg.data[-1:]))
+        # else:
+        #     SawyerEnv.position.append(float(msg.data[0:]))
+        
+        print("des: " + desire + " pos: " + position + " Iq: " + current)
+        self.bariflex_state = SawyerEnv.current
 
     def get_bariflex_state(self):
         return self.bariflex_state
