@@ -51,11 +51,12 @@ def signal_handler(sig, frame):
     print("\nStopping recording...")
     recording = False
 
-def record_rosbag(now):
+def record_rosbag():
     global recording, bag_path
-    bag_path = generate_bag_path(now)
+    target_bag_path = generate_bag_path()
+    print("target_bag_path:", target_bag_path)
     process = subprocess.Popen([
-        'rosbag', 'record', '-O', bag_path, '-b', '0',
+        'rosbag', 'record', '-O', target_bag_path, '-b', '0',
         '/camera/aligned_depth_to_color/camera_info',
         '/camera/aligned_depth_to_color/image_raw',
         '/camera/aligned_depth_to_color/image_raw/compressedDepth',
@@ -69,6 +70,7 @@ def record_rosbag(now):
         '/bariflex',
         '/bariflex_motion'
     ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    print("started recording")
     while recording:
         time.sleep(1)
     process.terminate()
@@ -98,6 +100,7 @@ def rebag():
         sys.exit(1)
 
     record_thread.join()
+    input("Press Enter to exit...")
     print("Killing rosnode processes")
     subprocess.run(['rosnode', 'kill', '--all'])
 
