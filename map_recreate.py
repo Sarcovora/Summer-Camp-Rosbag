@@ -12,7 +12,7 @@ import sys
 recording = True
 offline = True
 
-bag_playback_rate = 0.5
+# bag_playback_rate = 0.5
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -38,16 +38,16 @@ os.makedirs(saved_demos_dir, exist_ok=True)
 os.makedirs(saved_mapping_dir, exist_ok=True)
 os.makedirs(recreated_bags_dir, exist_ok=True)
 
-map_file_path = 'default_map_file'
-bag_path = 'default_bag_path'
+# map_file_path = 'default_map_file'
+# bag_path = 'default_bag_path'
 
 def signal_handler(sig, frame):
     global recording
     print("\nStopping recording...")
     recording = False
 
-def recreate_mapping():
-    global map_file_path, bag_path, bag_playback_rate
+def recreate_mapping(map_file_path=None, bag_path=None, bag_playback_rate=0.5):
+    # global map_file_path, bag_path, bag_playback_rate
 
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -75,7 +75,8 @@ def main():
         map_name = os.path.basename(bag_path).split('_')[1]
         print('map_name:', map_name)
         map_file_path = os.path.join(recreated_maps_dir, f'{map_name}.db')
-        recreate_mapping()
+        # recreate_mapping()
+        recreate_mapping(map_file_path=map_file_path, bag_path=bag_path, bag_playback_rate=0.5)
     else:
         print("No rosbag file specified. Exiting.")
         sys.exit(1)
