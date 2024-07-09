@@ -68,7 +68,7 @@ def record_rosbag(now):
             '/camera/aligned_depth_to_color/camera_info',
             '/camera/aligned_depth_to_color/image_raw',
             '/camera/color/camera_info',
-            '/camera/color/image_raw/',
+            '/camera/color/image_raw',
             '/camera/imu',
             '/camera/gyro/imu_info',
             '/camera/accel/imu_info',
@@ -124,7 +124,7 @@ def main():
         os.system(f'touch {map_file_path}.emp')
 
     else: # DEMO stage
-        
+
         # Show saved maps
         print("These are the saved maps:")
         # saved_maps = os.listdir(os.path.join(script_dir, 'saved_maps'))
@@ -135,7 +135,7 @@ def main():
         # map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_name}.db')
         map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
         print("Loading map from file...", map_file_path)
- 
+
     subprocess.Popen(['roslaunch', './launch/d435i_minimal.launch'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     input("Press Enter to start recording\n")
     print("Press 's' and Enter to stop recording")
