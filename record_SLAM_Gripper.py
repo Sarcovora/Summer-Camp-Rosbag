@@ -73,7 +73,8 @@ def record_rosbag(now):
             '/camera/gyro/imu_info',
             '/camera/accel/imu_info',
             '/tf_static',
-            '/bariflex'
+            '/bariflex',
+            '/bariflex_motion'
         ])
     else:
         process = subprocess.Popen([
@@ -87,7 +88,8 @@ def record_rosbag(now):
             '/camera/gyro/imu_info',
             '/camera/accel/imu_info',
             '/tf_static',
-            '/bariflex'
+            '/bariflex',
+            '/bariflex_motion'
         ])
     while recording:
         time.sleep(1)
