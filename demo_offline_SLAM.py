@@ -44,7 +44,7 @@ bag_path = 'default_bag_path'
 
 def generate_bag_path():
     global data_dir, dict_path, bag_name, map_name
-    return os.path.join(recreated_bags_dir, f'recreate_{os.path.basename(bag_path)}')
+    return os.path.join(recreated_bags_dir, f'recreatedDemo_{os.path.basename(bag_path)}')
 
 def signal_handler(sig, frame):
     global recording
@@ -57,15 +57,18 @@ def record_rosbag(now):
     process = subprocess.Popen([
         'rosbag', 'record', '-O', bag_path, '-b', '0',
         '/camera/aligned_depth_to_color/camera_info',
+        '/camera/aligned_depth_to_color/image_raw',
         '/camera/aligned_depth_to_color/image_raw/compressedDepth',
         '/camera/color/camera_info',
         '/camera/color/image_raw/compressed',
         '/camera/imu',
-        '/camera/imu_info',
+        '/camera/gyro/imu_info',
+        '/camera/accel/imu_info',
         '/tf_static',
         '/tf',
-        '/bariflex'
-    ])
+        '/bariflex',
+        '/bariflex_motion'
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     while recording:
         time.sleep(1)
     process.terminate()
@@ -83,8 +86,7 @@ def rebag():
     print("Running image_transport")
 
     # Run the image_transport republish commands
-    # subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressed', 'in:=/camera/color/image_raw', 'raw', 'out:=/camera/color/image_raw'])
-    # subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressedDepth', 'in:=/camera/aligned_depth_to_color/image_raw', 'raw', 'out:=/camera/aligned_depth_to_color/image_raw'])
+    subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressed', 'in:=/camera/color/image_raw', 'raw', 'out:=/camera/color/image_raw'])
 
     record_thread = threading.Thread(target=record_rosbag)
     record_thread.start()
