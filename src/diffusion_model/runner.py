@@ -26,12 +26,22 @@ import zarr
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.training_utils import EMAModel
 from diffusers.optimization import get_scheduler
-
+import hydra
+import os
 from helper_functions import get_into_dataloader_format
 
+CONFIG = os.path.join(os.getcwd(), 'config')
+
 class Runner():
-    def __init__(self, side="right", obs_horizon=6, pred_horizon=4, #pred horizon must be a multiple of 4
-                model_file="checkpoint.pth", stats_file="stats.json", device="cpu"):
+    def __init__(self, 
+                 cfg, 
+                 side="right", 
+                 #obs_horizon=6, 
+                 #pred_horizon=4, #pred horizon must be a multiple of 4
+                 #execution_horizon=2, 
+                 model_file="checkpoint.pth", 
+                 stats_file="stats.json", 
+                 device="cpu"):
         
         self.env = SawyerEnv()
         
@@ -39,8 +49,9 @@ class Runner():
         self.limb = intera_interface.Limb(side)
         self.camera = camera.Camera()
 
-        self.obs_horizon = obs_horizon
-        self.pred_horizon = pred_horizon
+        self.obs_horizon = cfg.model.obs_horizon
+        self.pred_horizon = cfg.model.pred_horizon
+        self.execution_horizon = cfg.model.execution_horizon
         self.model_file = model_file
         self.stats_file = stats_file
 
@@ -84,87 +95,89 @@ class Runner():
 
         return pose_array, orientation_array, image_array
 
-    def run(self, num_passes=2):
-        for j in range(100):
-            pos_arr, or_arr, im_arr = self.get_starting_arrays()
+    def run(self):
+        pos_arr, or_arr, im_arr = self.get_starting_arrays()
 
-            noise_scheduler = DDPMScheduler(
-                num_train_timesteps=100,
-                beta_schedule='squaredcos_cap_v2',
-                clip_sample=True,
-                prediction_type='epsilon'
+        noise_scheduler = DDPMScheduler(
+            num_train_timesteps=100,
+            beta_schedule='squaredcos_cap_v2',
+            clip_sample=True,
+            prediction_type='epsilon'
+            )
+
+        for i in range(self.execution_horizon):
+            pos_tensor = torch.stack(pos_arr, dim=0).unsqueeze(0).squeeze(2)
+            or_tensor = torch.stack(or_arr, dim=0).unsqueeze(0).squeeze(2)
+            im_tensor = torch.stack(im_arr, dim=0).unsqueeze(0).squeeze(2)
+
+            pos_tensor = dataset.normalize(pos_tensor, self.pose_stats).to(self.device)
+            or_tensor = dataset.normalize(or_tensor, self.orientation_stats).to(self.device)
+            im_tensor = dataset.normalize(im_tensor, self.image_stats).to(self.device)
+
+
+            image = im_tensor.reshape(1, self.obs_horizon, 3, 96, 96)
+            agent_pos = torch.cat((pos_tensor, or_tensor), dim=2).reshape(1, self.obs_horizon, 7)
+            B = agent_pos.shape[0]
+
+            image_features = self.nets["vision_encoder"](image.flatten(end_dim=1))
+            image_features = image_features.reshape(*image.shape[:2],-1)
+            obs_features = torch.cat([image_features, agent_pos], dim=-1)
+            obs_cond = obs_features.flatten(start_dim=1)
+
+            noisy_action = torch.randn((1, self.pred_horizon, 7), device=self.device)
+            noise_scheduler.set_timesteps(100)
+
+            for k in noise_scheduler.timesteps:
+                noise_pred = self.nets["noise_pred_net"](
+                    sample=noisy_action,
+                    timestep=k,
+                    global_cond=obs_cond
                 )
 
-            for i in range(num_passes):
-                pos_tensor = torch.stack(pos_arr, dim=0).unsqueeze(0).squeeze(2)
-                or_tensor = torch.stack(or_arr, dim=0).unsqueeze(0).squeeze(2)
-                im_tensor = torch.stack(im_arr, dim=0).unsqueeze(0).squeeze(2)
+                noisy_action = noise_scheduler.step(
+                    model_output=noise_pred,
+                    timestep=k,
+                    sample=noisy_action
+                ).prev_sample
 
-                pos_tensor = dataset.normalize(pos_tensor, self.pose_stats).to(self.device)
-                or_tensor = dataset.normalize(or_tensor, self.orientation_stats).to(self.device)
-                im_tensor = dataset.normalize(im_tensor, self.image_stats).to(self.device)
+            noisy_action = noisy_action.detach().to('cpu')
+            noisy_action = noisy_action[0]
+            # (1, 4, 7)
 
-
-                image = im_tensor.reshape(1, self.obs_horizon, 3, 96, 96)
-                agent_pos = torch.cat((pos_tensor, or_tensor), dim=2).reshape(1, self.obs_horizon, 7)
-                B = agent_pos.shape[0]
-
-                image_features = self.nets["vision_encoder"](image.flatten(end_dim=1))
-                image_features = image_features.reshape(*image.shape[:2],-1)
-                obs_features = torch.cat([image_features, agent_pos], dim=-1)
-                obs_cond = obs_features.flatten(start_dim=1)
-
-                noisy_action = torch.randn((1, self.pred_horizon, 7), device=self.device)
-                noise_scheduler.set_timesteps(100)
-
-                for k in noise_scheduler.timesteps:
-                    noise_pred = self.nets["noise_pred_net"](
-                        sample=noisy_action,
-                        timestep=k,
-                        global_cond=obs_cond
-                    )
-
-                    noisy_action = noise_scheduler.step(
-                        model_output=noise_pred,
-                        timestep=k,
-                        sample=noisy_action
-                    ).prev_sample
-
-                noisy_action = noisy_action.detach().to('cpu')
-                noisy_action = noisy_action[0]
-                # (1, 4, 7)
-
-                (pred_pos, pred_or) = torch.split(noisy_action, [3, 4], dim=1)
+            (pred_pos, pred_or) = torch.split(noisy_action, [3, 4], dim=1)
 
 
-                for j in range(self.pred_horizon):
-                    current_pos = dataset.unnormalize(pred_pos[j], self.pose_stats)
-                    current_or = dataset.unnormalize(pred_or[j], self.orientation_stats)
+            for j in range(self.pred_horizon):
+                current_pos = dataset.unnormalize(pred_pos[j], self.pose_stats)
+                current_or = dataset.unnormalize(pred_or[j], self.orientation_stats)
 
-                    try:
-                        self.env.step([current_pos[0].item(), current_pos[1].item(), 
-                            current_pos[2].item(), current_or[0].item(), 
-                            current_or[1].item(), current_or[2].item(), 
-                            current_or[3].item()])
+                try:
+                    self.env.step([current_pos[0].item(), current_pos[1].item(), 
+                        current_pos[2].item(), current_or[0].item(), 
+                        current_or[1].item(), current_or[2].item(), 
+                        current_or[3].item()])
 
-                        pos_arr.pop(0)
-                        or_arr.pop(0)
-                        im_arr.pop(0)
+                    pos_arr.pop(0)
+                    or_arr.pop(0)
+                    im_arr.pop(0)
 
-                        new_pose, new_orientation, new_image = self.get_current_state()
+                    new_pose, new_orientation, new_image = self.get_current_state()
 
-                        pos_arr.append(new_pose)
-                        or_arr.append(new_orientation)
-                        im_arr.append(new_image)
-                    except:
-                        continue
-                    
+                    pos_arr.append(new_pose)
+                    or_arr.append(new_orientation)
+                    im_arr.append(new_image)
+                except:
+                    continue
 
-
-if __name__ == "__main__":
+@hydra.main(config_path=CONFIG, config_name="config", version_base="1.3.2")        
+def main(cfg):
+    pprint(cfg)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Device: {device}")
 
     runner = Runner(device=device)
 
     runner.run(num_passes=1)
+
+if __name__ == "__main__":
+    main()
