@@ -53,23 +53,14 @@ class SawyerEnv():
         pose.orientation.z = q3
         pose.orientation.w = q4
         print("endpose",self.limb.endpoint_pose())
-
+        print("params", pose, tip_name)
         joint_angles = self.limb.ik_request(pose, tip_name)
+   
         self.limb.set_joint_positions(joint_angles)
        
-    #UNCOMMENT!!!
-    '''def transform(self,file1):
-        rate = rospy.Rate(10)
 
-        f = h5py.File(file1, 'r')
-    
-        for group in f.keys():
-            g = f[group]
-            action = g[2]
-            self.update_cartesian(action)'''
-
-    def update_cartesian(self,action):
-        #makes translation and quaternion into a matrix
+    def step(self,action):
+    #make translation and quaternion into a matrix
         prev = env.limb.endpoint_pose()
         prev_pose = np.eye(4)
         rotmat0 = tf3d.quaternions.quat2mat(prev['orientation'])
@@ -78,22 +69,38 @@ class SawyerEnv():
         prev_pose[1,3] = prev['position'].y
         prev_pose[2,3] = prev['position'].z
     
-        rotmat1 = tf3d.quaternions.quat2mat([action[6],action[3],action[4],action[5]])
+        rotmat1 = tf3d.quaternions.quat2mat([action[1][3],action[1][0],action[1][1],action[1][2]])
         homomat = np.eye(4)
-        homomat[:3,:3] = rotmat
-        homomat[0,3] = action[0]
-        homomat[1,3] = action[1]
-        homomat[2,3] = action[2]
+        homomat[:3,:3] = rotmat1
+        homomat[0,3] = action[0][0]
+        homomat[1,3] = action[0][1]
+        homomat[2,3] = action[0][2]
     
         if prev_pose is not None:
+            print("Prev",prev_pose)
+            print("Homo",homomat)
             new_pose = np.matmul(homomat,prev_pose)
+            print("New",new_pose)
     
         rotmat2 = new_pose[:3, :3]
         quaternion = tf3d.quaternions.mat2quat(rotmat2)
     
         self.go_to_cartesian(new_pose[0, 3], new_pose[1, 3], new_pose[2, 3], quaternion[0], quaternion[1], quaternion[2], quaternion[3])
     
-        rate.sleep()
+        #image = self.capture_image()
+            # return {"new_pose": new_pose, "new_image": image}
+    
+        self.rate.sleep()
+    
+    def replay_bag(self,file1):
+        rate = rospy.Rate(10)
+
+        f = h5py.File(file1, 'r')
+    
+        for g in f.keys():
+            group = f[g]
+            for i in range(len(group['actions'])):
+                self.step(group['actions'][i])
    
     # referred to this: https://github.com/IntelRealSense/librealsense/blob/master/wrappers/python/examples/opencv_viewer_example.py
     def receieve_image(self):
@@ -122,7 +129,8 @@ class SawyerEnv():
         # If needed, return both images
         return images
      
-    '''def step(self, action):
+    '''
+    def step(self, action):
         # TODO : here apply the action, use go_to_cartesian
        
         # TODO: return the observation
@@ -134,18 +142,16 @@ class SawyerEnv():
 def run_episode(policy, env):
     pass
    
-
+   
 
 if __name__ == '__main__':
     env = SawyerEnv()
-   
-
     rate = rospy.Rate(10)
-
-    #this should be changed when we get the hdf5 file (use transform function (see above))
-    rotmat = np.eye(3)
-    rotmat[0,0] = 0.1
-    quat = tf3d.quaternions.mat2quat(rotmat)
-    action = [0.1,0.1,0,quat[0],quat[1],quat[2],quat[3],0]
-    env.update_cartesian(action)
+   
+    quatmat = np.eye(3)
+    quat = tf3d.quaternions.mat2quat(quatmat)
+   
+    #self.step([[0,0,0],quat])
+    env.replay_bag("dummy_data1.hdf5")
+   
     rate.sleep()
