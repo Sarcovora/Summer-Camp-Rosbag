@@ -230,8 +230,9 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
     subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressed', 'in:=/camera/color/image_raw', 'raw', 'out:=/camera/color/image_raw'])
 
     record_thread = threading.Thread(target=record_rosbag)
+    hdf5_thread = threading.Thread(target=listener, args=(bag_path))
     record_thread.start()
-    listener(bag_path)
+    hdf5_thread.start()
     if bag_path:
         subprocess.run(['rosbag', 'play', bag_path, '--rate', str(bag_playback_rate), '--clock'])
     else:
@@ -239,6 +240,7 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
         sys.exit(1)
 
     record_thread.join()
+    hdf5_thread.join() # perhaps use rosbag to read length of bag and then make the timeout this??
     input("Press Enter to exit...")
     print("Killing rosnode processes")
     subprocess.run(['rosnode', 'kill', '--all'])
