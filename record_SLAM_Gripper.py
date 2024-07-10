@@ -110,6 +110,8 @@ def main():
     # Set the current time for the filename
     now = datetime.datetime.now().strftime("%F__%H_%M_%S")
 
+    subprocess.Popen(['rosrun', 'rosserial_python', 'serial_node.py', '/dev/ttyACM0'], stdout=subprocess.DEVNULL,  stderr=subprocess.STDOUT)
+
     # Set ROS parameters
     subprocess.run(['rosparam', 'set', 'use_sim_time', 'false'])
 
