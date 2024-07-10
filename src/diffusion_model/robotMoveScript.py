@@ -18,6 +18,7 @@ import cv2
 import transforms3d as tf3d
 
 import h5py
+from numpy import linalg as LA
 
 
 
@@ -60,8 +61,8 @@ class SawyerEnv():
        
 
     def step(self,action):
-    #make translation and quaternion into a matrix
-        prev = env.limb.endpoint_pose()
+        #make translation and quaternion into a matrix
+        prev = self.limb.endpoint_pose()
         prev_pose = np.eye(4)
         rotmat0 = tf3d.quaternions.quat2mat(prev['orientation'])
         prev_pose[:3,:3] = rotmat0
@@ -77,21 +78,18 @@ class SawyerEnv():
         homomat[2,3] = action[0][2]
     
         if prev_pose is not None:
-            print("Prev",prev_pose)
-            print("Homo",homomat)
             new_pose = np.matmul(homomat,prev_pose)
-            print("New",new_pose)
     
         rotmat2 = new_pose[:3, :3]
         quaternion = tf3d.quaternions.mat2quat(rotmat2)
     
         self.go_to_cartesian(new_pose[0, 3], new_pose[1, 3], new_pose[2, 3], quaternion[0], quaternion[1], quaternion[2], quaternion[3])
     
-        #image = self.capture_image()
-            # return {"new_pose": new_pose, "new_image": image}
-    
         self.rate.sleep()
-    
+
+        image = self.capture_image()
+        return {"new_pose": new_pose, "new_image": image}
+   
     def replay_bag(self,file1):
         rate = rospy.Rate(10)
 
@@ -142,16 +140,16 @@ class SawyerEnv():
 def run_episode(policy, env):
     pass
    
+def normalize(quaternion):
+    quat = np.array(quaternion)
+    quat = LA.norm(quat)
    
+    return quat
 
 if __name__ == '__main__':
     env = SawyerEnv()
     rate = rospy.Rate(10)
-   
-    quatmat = np.eye(3)
-    quat = tf3d.quaternions.mat2quat(quatmat)
-   
-    #self.step([[0,0,0],quat])
+
     env.replay_bag("dummy_data1.hdf5")
    
     rate.sleep()
