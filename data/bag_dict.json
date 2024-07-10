@@ -1,0 +1,46 @@
+[
+    {
+        "bag_name": "my_bagfile_compressed.bag",
+        "group_name": "eavn",
+        "operator_name": "evan",
+        "time_stamp": "2024-07-02__10_03_58",
+        "task": "empty",
+        "map_file": "hometest"
+    },
+
+    {
+        "bag_name": "bariflex1.bag",
+        "group_name": "eavn",
+        "operator_name": "evan",
+        "time_stamp": "2024-07-02__10_03_58",
+        "task": "empty",
+        "map_file": "hometest"
+    },
+    
+    {
+        "bag_name": "bariflex2.bag",
+        "group_name": "eavn",
+        "operator_name": "evan",
+        "time_stamp": "2024-07-02__10_03_58",
+        "task": "empty",
+        "map_file": "hometest"
+    },
+
+    {
+        "bag_name": "bariflex3.bag",
+        "group_name": "eavn",
+        "operator_name": "evan",
+        "time_stamp": "2024-07-02__10_03_58",
+        "task": "empty",
+        "map_file": "hometest"
+    },
+
+    {
+        "bag_name": "bariflex4.bag",
+        "group_name": "eavn",
+        "operator_name": "evan",
+        "time_stamp": "2024-07-02__10_03_58",
+        "task": "empty",
+        "map_file": "hometest"
+    }
+]
