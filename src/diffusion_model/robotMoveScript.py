@@ -70,6 +70,7 @@ class SawyerEnv():
 
     # closes the camera
     def reset(self):
+        self.limb.move_to_neutral(self, timeout=15.0, speed=0.3)
         self.pipeline.stop()
 
     # referred to this: # https://github.com/RethinkRobotics/intera_sdk/blob/master/intera_examples/scripts/ik_service_client.py
