@@ -154,6 +154,12 @@ def main():
     print("Killing rosnode processes")
     subprocess.run(['rosnode', 'kill', '--all'])
 
+    baginfo = os.popen(f'rosbag info {bag_path}').read()
+    print('--------------------------')
+    print('rosbag info:')
+    print(baginfo)
+    print('--------------------------')
+
     if (not mappingStage):
 
         # after replay, ask to keep/delete
@@ -190,6 +196,5 @@ def main():
     print("Recording saved to", bag_path)
 
     input("Recording stopped. Press Enter to exit.")
-
 if __name__ == "__main__":
     main()
