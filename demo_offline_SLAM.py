@@ -16,7 +16,6 @@ import rosbag
 import numpy as np
 from sensor_msgs.msg import Image, CompressedImage
 from std_msgs.msg import String
-from tf2_msgs import TFMessage
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 import tf2_ros
@@ -74,7 +73,7 @@ color_list, depth_list, bari_list, action_list = [], [], [], []
 
 color_offset, depth_offset, bari_offset = 0, 0, 0
 
-uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr = np.empty(), np.empty(), np.empty(), np.empty()
+uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr = np.empty(0), np.empty(0), np.empty(0), np.empty(0)
 
 
 def color_image_callback(data):

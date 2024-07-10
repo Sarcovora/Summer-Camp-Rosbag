@@ -20,18 +20,17 @@ def main():
 
         for bag_info in bag_list:
             hdf5_path = os.path.join(script_dir, 'data', 'hdf5_files', f"{bag_info.get('bag_name')}")
-            bag_path = os.path.join(script_dir, 'data', 'saved_mapping_bags', f"{bag_info.get('bag_name')}")
+            bag_path = os.path.join(script_dir, 'data', 'saved_demo_bags', f"{bag_info.get('bag_name')}")
             map_name = bag_info.get('map_file')
             map_file_path = os.path.join(recreated_maps_dir, f'{map_name}.db')
-            subprocess.Popen(['python3', 'h5py_live_recorder.py', f'{bag_info.get("bag_name")}', f'{hdf5_path}' ])
             if exists(bag_path):
                 if (not exists(map_file_path)):
                     print("The corresponding map file has not been recreated. Exiting.")
                     sys.exit(1)
                 print(f"Processing bag file: {bag_path}")
-                map_recreate.recreate_mapping(map_file_path=map_file_path, bag_path=bag_path, bag_playback_rate=0.5)
+                # map_recreate.recreate_mapping(map_file_path=map_file_path, bag_path=bag_path, bag_playback_rate=0.5)
                 
-                demo_offline_SLAM.rebag(source_map_file_path=map_file_path, bag_path=bag_path, bag_playback_rate=0.5)
+                demo_offline_SLAM.rebag(source_map_file_path=map_file_path, bag_path=bag_path, bag_playback_rate=0.25)
             else: 
                 print("Rosbag file not found. Exiting. ")
                 sys.exit(1)
