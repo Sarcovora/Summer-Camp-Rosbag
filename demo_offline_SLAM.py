@@ -76,8 +76,8 @@ def record_rosbag():
     process.terminate()
     process.wait()
 
-def rebag():
-    global source_map_file_path, bag_path, bag_playback_rate
+def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
+    # global source_map_file_path, bag_path, bag_playback_rate
 
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -115,7 +115,7 @@ def main():
         if (not exists(source_map_file_path)):
             print("The corresponding map file has not been recreated. Exiting.")
             sys.exit(1)
-        rebag()
+        rebag(source_map_file_path=source_map_file_path, bag_path=bag_path, bag_playback_rate=0.5)
     else:
         print("No rosbag file specified. Exiting.")
         sys.exit(1)
