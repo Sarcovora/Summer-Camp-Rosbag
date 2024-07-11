@@ -73,12 +73,10 @@ class SawyerEnv():
 
     # closes the camera
     def reset(self):
-        env = SawyerEnv()
-        for i in range(10):
-            self.go_to_cartesian(startVar.x, startVar.y, startVar.z, startVar2.x, startVar2.y, startVar2.z, startVar2.w)
+        self.go_to_cartesian(startVar.x, startVar.y, startVar.z, startVar2.x, startVar2.y, startVar2.z, startVar2.w)
 
         # self.limb.move_to_neutral(self, timeout=15.0, speed=0.3)
-        self.pipeline.stop()
+        # self.pipeline.stop()
 
     # referred to this: # https://github.com/RethinkRobotics/intera_sdk/blob/master/intera_examples/scripts/ik_service_client.py
     def go_to_cartesian(self, x1, y1, z1, q1, q2, q3, q4, tip_name="right_hand"):     
