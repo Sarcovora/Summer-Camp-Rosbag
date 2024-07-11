@@ -86,7 +86,6 @@ def color_image_callback(data):
 
         color_list.append(rgb_arr)
         color_offset += 1
-        print("color")
 
         # cv2.imshow("Color Image", cv_image)
         # cv2.waitKey(1)
@@ -103,7 +102,6 @@ def depth_image_callback(data):
 
         depth_list.append(depth_arr)
         depth_offset += 1
-        print("depth")
 
         # cv2.imshow("Depth Image", cv_image)
         # cv2.waitKey(1)
@@ -115,7 +113,6 @@ def bariflex_callback(data):
     regex = [float(x.group()) for x in re.finditer(r"-{0,1}\d+\.\d+", data.data)]
     bariflex_list.append(regex)
     bariflex_offset += 1
-    print("bari")
 
 def listener(duration):
     global uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr
@@ -127,7 +124,7 @@ def listener(duration):
 
     # tf lookup
     tf_buffer = tf2_ros.Buffer()
-
+    tf_listener = tf2_ros.TransformListener(tf_buffer)
     rate = rospy.Rate(10)
     # hdf5_file = h5py.File(os.path.join(data_dir, "rosinfo.hdf5"), "a")
     # group = hdf5_file.create_group(name)
@@ -138,10 +135,11 @@ def listener(duration):
     prev_pose = None
     start_time = time.time()
     end_time = start_time + duration
-    while time.time() <= end_time:
+    while time.time() <= end_time: # change this to synchronizer later
         try:
             # tf lookup
-            trans = tf_buffer.lookup_transform('camera_link', 'map', rospy.Time(0))
+            # tf_listener.waitForTransform("/camera_link", "/odom", now, rospy.Duration(2))
+            trans = tf_buffer.lookup_transform('camera_link', 'odom', rospy.Time())
             translation = trans.transform.translation
             rotation = trans.transform.rotation
 
@@ -172,7 +170,7 @@ def listener(duration):
             depth_offset = 0
             bariflex_offset = 0
         except Exception as e:
-            # print("oops: ", e)
+            print("oops: ", e)
             continue
     print("lmao")
         
@@ -222,7 +220,7 @@ def record_rosbag(duration):
     process.terminate()
     process.wait()
 
-def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
+def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.1):
     # global source_map_file_path, bag_path, bag_playback_rate
 
     signal.signal(signal.SIGINT, signal_handler)
@@ -244,7 +242,8 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
     record_thread.start()
     # hdf5_thread.start()
     if bag_path:
-        subprocess.run(['rosbag', 'play', bag_path, '--rate', str(bag_playback_rate), '--clock'])
+        # subprocess.run(['rosbag', 'play', bag_path, '--rate', str(bag_playback_rate), '--clock'])
+        pass
     else:
         print("ERR: Couldn't find rosbag file. Exiting.")
         sys.exit(1)
@@ -254,7 +253,7 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
     print("lmao3")
     # hdf5_thread.join(bag_duration + 3) # 3 second buffer so code doesn't blow up in our face -- dont multithread this for future reference
     print("Killing rosnode processes")
-    subprocess.run(['rosnode', 'kill', '--all'])
+    # subprocess.run(['rosnode', 'kill', '--all'])
     write_hdf5(bag_path)
     print("things were written")
 

@@ -81,7 +81,6 @@ def record_rosbag(now):
             'rosbag', 'record', '-O', bag_path, '-b', '0',
             '/camera/aligned_depth_to_color/camera_info',
             '/camera/aligned_depth_to_color/image_raw',
-            '/camera/aligned_depth_to_color/image_raw/compressedDepth',
             '/camera/color/camera_info',
             '/camera/color/image_raw/compressed',
             '/camera/imu',
