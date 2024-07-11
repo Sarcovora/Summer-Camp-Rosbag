@@ -132,8 +132,8 @@ def run_episode(policy, env):
 if __name__ == '__main__':
     env = SawyerEnv()
 
-    # env.go_to_cartesian(0.25, 0.25, 0.25, 0, 0, 0, 0)
-    # env.reset()
+    env.go_to_cartesian(0.25, 0.25, 0.25, 0, 0, 0, 0)
+    env.reset()
     rate = rospy.Rate(10)
     tempVar = env.limb.endpoint_pose()["position"]
     tempVar2 = env.limb.endpoint_pose()["orientation"]
