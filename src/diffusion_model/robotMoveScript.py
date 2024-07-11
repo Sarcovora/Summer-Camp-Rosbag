@@ -70,10 +70,15 @@ class SawyerEnv():
 
     def get_bariflex_state(self):
         return self.bariflex_state
-
+    def save_pose(self):
+        global neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w
+        tempVar = env.limb.endpoint_pose()["position"]
+        tempVar2 = env.limb.endpoint_pose()["orientation"]
+        neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w = tempVar.x, tempVar.y, tempVar.z, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w
     # closes the camera
     def reset(self):
-        self.go_to_cartesian(startVar.x, startVar.y, startVar.z, startVar2.x, startVar2.y, startVar2.z, startVar2.w)
+
+        self.go_to_cartesian(neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w)
 
         # self.limb.move_to_neutral(self, timeout=15.0, speed=0.3)
         # self.pipeline.stop()
@@ -135,17 +140,13 @@ def run_episode(policy, env):
 if __name__ == '__main__':
     env = SawyerEnv()
 
-    global startVar, startvar2
-    startVar = env.limb.endpoint_pose()["position"]
-    startVar2 = env.limb.endpoint_pose()["orientation"]
+    env.save_pose()
+
+    rate = rospy.Rate(10)
     tempVar = env.limb.endpoint_pose()["position"]
     tempVar2 = env.limb.endpoint_pose()["orientation"]
-    env.go_to_cartesian(tempVar.x, tempVar.y, tempVar.z + 10, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w)
+    for i in range(10):
+        env.go_to_cartesian(tempVar.x, tempVar.y, tempVar.z - .1, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w)
     env.reset()
-    rate = rospy.Rate(10)
-    # tempVar = env.limb.endpoint_pose()["position"]
-    # tempVar2 = env.limb.endpoint_pose()["orientation"]
-    # for i in range(100):
-    #     env.go_to_cartesian(tempVar.x, tempVar.y, tempVar.z - .05, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w)
     
     rate.sleep()
