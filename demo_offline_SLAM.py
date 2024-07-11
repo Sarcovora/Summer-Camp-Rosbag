@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import pdb
 import os
 import signal
 import subprocess
@@ -70,23 +70,20 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 script_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(script_dir, 'data')
 
-color_list, depth_list, bariflex_list, action_list = [], [], [], []
+latest_color, latest_depth, latest_bariflex, latest_action = None, None, None, None
 
-color_offset, depth_offset, bariflex_offset = 0, 0, 0
-
-uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr = [], [], [], []
+uber_color_arr, uber_depth_arr, uber_action_arr = [], [], []
 
 
 def color_image_callback(data):
-    global color_list, color_offset
+    global latest_color
     try:
         bridge = CvBridge()
         cv_image = bridge.compressed_imgmsg_to_cv2(data, "bgr8")
         cv_image = cv2.resize(cv_image, (320, 180), interpolation=cv2.INTER_AREA)
         rgb_arr = np.asarray(cv_image)
 
-        color_list.append(rgb_arr)
-        color_offset += 1
+        latest_color = rgb_arr
 
         # cv2.imshow("Color Image", cv_image)
         # cv2.waitKey(1)
@@ -94,15 +91,14 @@ def color_image_callback(data):
         rospy.logerr("CvBridge Error: {0}".format(e))
 
 def depth_image_callback(data):
-    global depth_list, depth_offset
+    global latest_depth
     try:
         bridge = CvBridge()
         cv_image = bridge.imgmsg_to_cv2(data, "16UC1")
         cv_image = cv2.resize(cv_image, (320, 180), interpolation=cv2.INTER_AREA)
         depth_arr = np.asarray(cv_image)
 
-        depth_list.append(depth_arr)
-        depth_offset += 1
+        latest_depth = depth_arr
 
         # cv2.imshow("Depth Image", cv_image)
         # cv2.waitKey(1)
@@ -110,16 +106,85 @@ def depth_image_callback(data):
         rospy.logerr("CvBridge Error: {0}".format(e))
 
 def bariflex_callback(data):
-    global bariflex_list, bariflex_offset
+    global latest_bariflex
     regex = [float(x.group()) for x in re.finditer(r"-{0,1}\d+\.\d+", data.data)]
-    bariflex_list.append(regex)
-    bariflex_offset += 1
+    latest_bariflex = regex[0]
 
 def sync_callback(color, depth, bariflex):
-    global color_list, depth_list, bariflex_list, color_offset, depth_offset, bariflex_offset
+    try:
+        bridge = CvBridge()
+        cv_image = bridge.compressed_imgmsg_to_cv2(color, "bgr8")
+        cv_image = cv2.resize(cv_image, (320, 180), interpolation=cv2.INTER_AREA)
+        rgb_arr = np.asarray(cv_image)
+        
+        uber_color_arr.append(rgb_arr)
+
+    except CvBridgeError as e:
+        rospy.logerr("CvBridge Error: {0}".format(e))
+        
+    try:
+        bridge = CvBridge()
+        cv_image = bridge.imgmsg_to_cv2(depth, "16UC1")
+        cv_image = cv2.resize(cv_image, (320, 180), interpolation=cv2.INTER_AREA)
+        depth_arr = np.asarray(cv_image)
+
+        uber_depth_arr.append(depth_arr)
+
+        # cv2.imshow("Depth Image", cv_image)
+        # cv2.waitKey(1)
+    except CvBridgeError as e:
+        rospy.logerr("CvBridge Error: {0}".format(e))
+
+    regex = [float(x.group()) for x in re.finditer(r"-{0,1}\d+\.\d+", bariflex.data)]
+    uber_bariflex_arr.append(regex)
+
+    tf_buffer = tf2_ros.Buffer()
+    tf_listener = tf2_ros.TransformListener(tf_buffer)
+
+    try:
+        # tf lookup
+        # tf_listener.waitForTransform("/camera_link", "/odom", now, rospy.Duration(2))
+        trans = tf_buffer.lookup_transform('camera_link', 'odom', rospy.Time())
+        translation = trans.transform.translation
+        rotation = trans.transform.rotation
+
+        # compute the 4x4 transform matrix representing the pose in the map
+        mat = quaternion_matrix([rotation.x, rotation.y, rotation.z, rotation.w])
+        transform_matrix = np.identity(4)
+        transform_matrix[:3, :3] = mat[:3, :3]
+        transform_matrix[0, 3] = translation.x
+        transform_matrix[1, 3] = translation.y
+        transform_matrix[2, 3] = translation.z
+        # compute the relative pose between this pose and the previous pose, prev_pose
+        if prev_pose is not None:
+            inv_prev = inv(prev_pose)
+            rel_pose = np.matmul(inv_prev, transform_matrix)
+        else:
+            rel_pose = transform_matrix
+        prev_pose = transform_matrix
+        deltaTrans = []
+        deltaTrans[0] = rel_pose[0, 3]
+        deltaTrans[1] = rel_pose[1, 3]
+        deltaTrans[2] = rel_pose[2, 3]
+        deltaQuat = []
+        deltaQuat = quaternion_from_matrix(rel_pose)
+        # record the relative pose together with the most recent depth and color image received by subscribers
+        if latest_color is not None:
+            uber_color_arr.append(latest_color)
+        if latest_depth is not None:
+            uber_depth_arr.append(latest_depth)
+        if latest_bariflex is not None:
+            uber_action_arr.append([deltaTrans, deltaQuat, latest_bariflex])
+        print("appends")
+    except Exception as e:
+        print("oops: ", e)
+
+
+    
 
 def listener_sync(duration):
-    start_time = time.time() + duration
+    start_time = time.time()
+    end_time = start_time + duration
     rospy.init_node("hdf5_parser", anonymous=True)
 
     color_sub = message_filters.Subscriber("/camera/color/image_raw/compressed", CompressedImage)
@@ -128,7 +193,9 @@ def listener_sync(duration):
 
     synch = message_filters.TimeSynchronizer([color_sub, depth_sub, bariflex_sub], 10)
     synch.registerCallback(sync_callback)
-    while time.time(
+    rate = rospy.Rate(10)
+    while time.time() <= time.time():
+        rate.sleep()
 
 
 def listener(duration):
@@ -174,29 +241,32 @@ def listener(duration):
             else:
                 rel_pose = transform_matrix
             prev_pose = transform_matrix
-            deltaTrans = []
+            deltaTrans = [0, 0, 0]
             deltaTrans[0] = rel_pose[0, 3]
             deltaTrans[1] = rel_pose[1, 3]
             deltaTrans[2] = rel_pose[2, 3]
-            deltaQuat = []
+            deltaQuat = [0, 0, 0, 1]
             deltaQuat = quaternion_from_matrix(rel_pose)
             # record the relative pose together with the most recent depth and color image received by subscribers
-            uber_color_arr.append(color_list[-1 * color_offset])
-            uber_depth_arr.append(depth_list[-1 * depth_offset])
-            uber_bariflex_arr.append(bariflex_list[-1 * bariflex_offset])
-            uber_action_arr.append([deltaTrans, deltaQuat, bariflex_list[-1 * bariflex_offset][0]])
-            print("appends")
-
-            color_offset = 0
-            depth_offset = 0
-            bariflex_offset = 0
+            if latest_color is not None and latest_depth is not None and latest_bariflex is not None:
+                print("firstif")
+                if latest_color[0] is not None and latest_depth[0] is not None:
+                    print("secondif")
+                    uber_color_arr.append(latest_color)
+                    uber_depth_arr.append(latest_depth)
+                    uber_action_arr.append([*deltaTrans, *deltaQuat, latest_bariflex])
+                    print("appends")
+            else:
+                continue
         except Exception as e:
             print("oops: ", e)
             continue
     print("lmao")
         
 def write_hdf5(name):
-    global uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr
+    global uber_color_arr, uber_depth_arr, uber_action_arr
+    # breakpoint()
+    # print(str(type(uber_color_arr[0])) + " " + str(type(uber_color_arr[-1])))
     with h5py.File(os.path.join(data_dir, "rosbag.hdf5"), "a") as hdf5_file:
         group = hdf5_file.create_group(name)
         group.create_dataset(f"{name}_color_images", data=np.array(uber_color_arr))
@@ -247,7 +317,7 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.1):
     signal.signal(signal.SIGINT, signal_handler)
 
     info_dict = yaml.load(subprocess.Popen(['rosbag', 'info', '--yaml', bag_path], stdout=subprocess.PIPE).communicate()[0], Loader=yaml.FullLoader)
-    bag_duration = info_dict['duration'] / bag_playback_rate
+    bag_duration = info_dict['duration']
 
     subprocess.run(['rosparam', 'set', 'use_sim_time', 'true'])
 
@@ -274,8 +344,9 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.1):
     print("lmao3")
     # hdf5_thread.join(bag_duration + 3) # 3 second buffer so code doesn't blow up in our face -- dont multithread this for future reference
     print("Killing rosnode processes")
-    # subprocess.run(['rosnode', 'kill', '--all'])
-    write_hdf5(bag_path)
+    subprocess.run(['rosnode', 'kill', '--all'])
+    print("writing start")
+    write_hdf5(os.path.basename(os.path.normpath(bag_path)))
     print("things were written")
 
 
