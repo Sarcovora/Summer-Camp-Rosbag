@@ -128,7 +128,8 @@ class SawyerEnv():
     def step(self, action):
         # TODO : here apply the action, use go_to_cartesian 
         # TODO: return the observation
-        new_coords = self.go_to_cartesian(action[0], action[1], action[2], action[3], action[4], action[5], action[6])
+        #new_coords = 
+        self.go_to_cartesian(action[0], action[1], action[2], action[3], action[4], action[5], action[6])
         #image = self.capture_image()
         self.rate.sleep()
         # return {"new_pose": new_coords, "new_image": image}
