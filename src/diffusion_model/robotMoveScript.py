@@ -39,6 +39,9 @@ class SawyerEnv():
         # Start the camera
         #self.pipeline.start(self.config)
         self.rate = rospy.Rate(10)
+
+        startVar = self.limb.endpoint_pose()["position"]
+        startVar2 = self.limb.endpoint_pose()["orientation"]
     
     # current = deque()
     # desire = deque()
@@ -72,7 +75,11 @@ class SawyerEnv():
 
     # closes the camera
     def reset(self):
-        self.limb.move_to_neutral(self, timeout=15.0, speed=0.3)
+        env = SawyerEnv()
+        for i in range(10):
+            self.go_to_cartesian(env.startVar.x, env.startVar.y, env.startVar.z + .05, env.startVar2.x, env.startVar2.y, env.startVar2.z, env.startVar2.w)
+
+        # self.limb.move_to_neutral(self, timeout=15.0, speed=0.3)
         self.pipeline.stop()
 
     # referred to this: # https://github.com/RethinkRobotics/intera_sdk/blob/master/intera_examples/scripts/ik_service_client.py
