@@ -4,12 +4,12 @@ import os
 import signal
 import subprocess
 import time
-import datetime
 import threading
-import json
 import sys
 import rospy
 from os.path import exists
+import yaml
+import time
 
 import re
 import rosbag
@@ -69,11 +69,11 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 script_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(script_dir, 'data')
 
-color_list, depth_list, bari_list, action_list = [], [], [], []
+color_list, depth_list, bariflex_list, action_list = [], [], [], []
 
-color_offset, depth_offset, bari_offset = 0, 0, 0
+color_offset, depth_offset, bariflex_offset = 0, 0, 0
 
-uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr = np.empty(0), np.empty(0), np.empty(0), np.empty(0)
+uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr = [], [], [], []
 
 
 def color_image_callback(data):
@@ -109,12 +109,13 @@ def depth_image_callback(data):
         rospy.logerr("CvBridge Error: {0}".format(e))
 
 def bariflex_callback(data):
-    global bari_list, bari_offset
+    global bariflex_list, bariflex_offset
     regex = [float(x.group()) for x in re.finditer(r"-{0,1}\d+\.\d+", data.data)]
-    bari_list.append(regex)
-    bari_offset += 1
+    bariflex_list.append(regex)
+    bariflex_offset += 1
 
-def listener(name):
+def listener(duration):
+    global uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr
     rospy.init_node("hdf5_parser", anonymous=True)
 
     rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, color_image_callback)
@@ -123,18 +124,18 @@ def listener(name):
 
     # tf lookup
     tf_buffer = tf2_ros.Buffer()
-    tf_listener = tf2_ros.TransformListener(tf_buffer)
 
     rate = rospy.Rate(10)
-    hdf5_file = h5py.File(os.path.join(data_dir, "rosinfo.hdf5"), "a")
-    group = hdf5_file.create_group(name)
-    color_dset = group.create_dataset(f"{name}_color_images", shape=(0,), maxshape=(None,))
-    depth_dset = group.create_dataset(f"{name}_depth_images", shape=(0,), maxshape=(None,))
-    bariflex_dset = group.create_dataset(f"{name}_bariflex_data", shape=(0,), maxshape=(None,))
-    action_dset = group.create_dataset(f"{name}_actions", shape=(0,), maxshape=(None,))
+    # hdf5_file = h5py.File(os.path.join(data_dir, "rosinfo.hdf5"), "a")
+    # group = hdf5_file.create_group(name)
+    # color_dset = group.create_dataset(f"{name}_color_images", shape=(0,), maxshape=(None,))
+    # depth_dset = group.create_dataset(f"{name}_depth_images", shape=(0,), maxshape=(None,))
+    # bariflex_dset = group.create_dataset(f"{name}_bariflex_data", shape=(0,), maxshape=(None,))
+    # action_dset = group.create_dataset(f"{name}_actions", shape=(0,), maxshape=(None,))
     prev_pose = None
-    
-    while not rospy.is_shutdown():
+    start_time = time.time()
+    end_time = start_time + duration
+    while time.time() <= end_time:
         try:
             # tf lookup
             trans = tf_buffer.lookup_transform('camera_link', 'map', rospy.Time(0))
@@ -158,28 +159,27 @@ def listener(name):
             translation[:3] = rel_pose[:3, 3]
             quaternion = quaternion_from_matrix(rel_pose)
             # record the relative pose together with the most recent depth and color image received by subscribers
-            color_dset.resize(color_dset.shape[0]+1, axis=0)
-            color_dset[-1] = color_list[-1 * color_offset]
-
-            depth_dset.resize(depth_dset.shape[0]+1, axis=0)
-            depth_dset[-1] = depth_list[-1 * depth_offset]
-
-            bariflex_dset.resize(bariflex_dset.shape[0]+1, axis=0)
-            bariflex_dset[-1] = bari_list[-1 * bari_offset]
-
-            action_dset.resize(action_dset.shape[0]+1, axis=0)
-            action_dset[-1] = [translation, quaternion, bari_list[-1 * bari_offset][0]]
+            uber_color_arr.append(color_list[-1 * color_offset])
+            uber_depth_arr.append(depth_list[-1 * depth_offset])
+            uber_bariflex_arr.append(bariflex_list[-1 * bariflex_offset])
+            uber_action_arr.append([translation, quaternion, bariflex_list[-1 * bariflex_offset][0]])
 
             color_offset = 0
             depth_offset = 0
-            bari_offset = 0
+            bariflex_offset = 0
         except Exception as e:
             print("oops: ", e)
+    print("lmao")
         
-        rate.sleep()
-
-    rospy.spin()
-
+def write_hdf5(name):
+    global uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr
+    with h5py.File(os.path.join(data_dir, "rosbag.hdf5"), "a") as hdf5_file:
+        group = hdf5_file.create_group(name)
+        group.create_dataset(f"{name}_color_images", data=np.array(uber_color_arr))
+        group.create_dataset(f"{name}_depth_images", data=np.array(uber_depth_arr))
+        group.create_dataset(f"{name}_bariflex_actions", data=np.array(uber_bariflex_arr))
+        group.create_dataset(f"{name}_actions", data=np.array(uber_action_arr))
+        print(f"{len(uber_color_arr)} {len(uber_depth_arr)} {len(uber_bariflex_arr)} {len(uber_action_arr)}")
 
 def generate_bag_path():
     global data_dir, dict_path, bag_name, map_name
@@ -220,6 +220,9 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
 
     signal.signal(signal.SIGINT, signal_handler)
 
+    info_dict = yaml.load(subprocess.Popen(['rosbag', 'info', '--yaml', bag_path], stdout=subprocess.PIPE).communicate()[0], Loader=yaml.FullLoader)
+    bag_duration = info_dict['duration']
+
     subprocess.run(['rosparam', 'set', 'use_sim_time', 'true'])
 
     subprocess.Popen(['roslaunch', './launch/realsense_load_from_map.launch', 'database_path:=' + source_map_file_path, 'offline:=true'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
@@ -230,20 +233,24 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
     subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressed', 'in:=/camera/color/image_raw', 'raw', 'out:=/camera/color/image_raw'])
 
     record_thread = threading.Thread(target=record_rosbag)
-    hdf5_thread = threading.Thread(target=listener, args=(bag_path))
+    # hdf5_thread = threading.Thread(target=listener)
     record_thread.start()
-    hdf5_thread.start()
+    # hdf5_thread.start()
     if bag_path:
         subprocess.run(['rosbag', 'play', bag_path, '--rate', str(bag_playback_rate), '--clock'])
     else:
         print("ERR: Couldn't find rosbag file. Exiting.")
         sys.exit(1)
-
+    listener(bag_duration + 2)
+    print("lmao2")
     record_thread.join()
-    hdf5_thread.join() # perhaps use rosbag to read length of bag and then make the timeout this??
+    # hdf5_thread.join(bag_duration + 3) # 3 second buffer so code doesn't blow up in our face
     input("Press Enter to exit...")
     print("Killing rosnode processes")
     subprocess.run(['rosnode', 'kill', '--all'])
+    write_hdf5(bag_path)
+    print("things were written")
+
 
 def main():
     global map_name, script_dir, bag_name, bag_path, offline, source_map_file_path
