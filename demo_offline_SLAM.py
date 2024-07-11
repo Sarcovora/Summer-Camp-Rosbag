@@ -13,6 +13,7 @@ import time
 
 import re
 import rosbag
+import message_filters
 import numpy as np
 from sensor_msgs.msg import Image, CompressedImage
 from std_msgs.msg import String
@@ -114,6 +115,22 @@ def bariflex_callback(data):
     bariflex_list.append(regex)
     bariflex_offset += 1
 
+def sync_callback(color, depth, bariflex):
+    global color_list, depth_list, bariflex_list, color_offset, depth_offset, bariflex_offset
+
+def listener_sync(duration):
+    start_time = time.time() + duration
+    rospy.init_node("hdf5_parser", anonymous=True)
+
+    color_sub = message_filters.Subscriber("/camera/color/image_raw/compressed", CompressedImage)
+    depth_sub = message_filters.Subscriber("/camera/aligned_depth_to_color/image_raw", Image)
+    bariflex_sub = message_filters.Subscriber("/bariflex", String)
+
+    synch = message_filters.TimeSynchronizer([color_sub, depth_sub, bariflex_sub], 10)
+    synch.registerCallback(sync_callback)
+    while time.time(
+
+
 def listener(duration):
     global uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr
     rospy.init_node("hdf5_parser", anonymous=True)
@@ -157,13 +174,17 @@ def listener(duration):
             else:
                 rel_pose = transform_matrix
             prev_pose = transform_matrix
-            translation[:3] = rel_pose[:3, 3]
-            quaternion = quaternion_from_matrix(rel_pose)
+            deltaTrans = []
+            deltaTrans[0] = rel_pose[0, 3]
+            deltaTrans[1] = rel_pose[1, 3]
+            deltaTrans[2] = rel_pose[2, 3]
+            deltaQuat = []
+            deltaQuat = quaternion_from_matrix(rel_pose)
             # record the relative pose together with the most recent depth and color image received by subscribers
             uber_color_arr.append(color_list[-1 * color_offset])
             uber_depth_arr.append(depth_list[-1 * depth_offset])
             uber_bariflex_arr.append(bariflex_list[-1 * bariflex_offset])
-            uber_action_arr.append([translation, quaternion, bariflex_list[-1 * bariflex_offset][0]])
+            uber_action_arr.append([deltaTrans, deltaQuat, bariflex_list[-1 * bariflex_offset][0]])
             print("appends")
 
             color_offset = 0
