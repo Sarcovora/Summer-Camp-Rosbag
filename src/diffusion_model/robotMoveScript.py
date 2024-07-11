@@ -22,6 +22,7 @@ from collections import deque
 
 
 class SawyerEnv():
+
     def __init__(self) -> None:
         rospy.init_node('go_to_cartesian_pose_py')
         self.limb = Limb()
@@ -39,9 +40,6 @@ class SawyerEnv():
         # Start the camera
         #self.pipeline.start(self.config)
         self.rate = rospy.Rate(10)
-
-        startVar = self.limb.endpoint_pose()["position"]
-        startVar2 = self.limb.endpoint_pose()["orientation"]
     
     # current = deque()
     # desire = deque()
@@ -77,7 +75,7 @@ class SawyerEnv():
     def reset(self):
         env = SawyerEnv()
         for i in range(10):
-            self.go_to_cartesian(env.startVar.x, env.startVar.y, env.startVar.z + .05, env.startVar2.x, env.startVar2.y, env.startVar2.z, env.startVar2.w)
+            self.go_to_cartesian(startVar.x, startVar.y, startVar.z, startVar2.x, startVar2.y, startVar2.z, startVar2.w)
 
         # self.limb.move_to_neutral(self, timeout=15.0, speed=0.3)
         self.pipeline.stop()
@@ -139,6 +137,9 @@ def run_episode(policy, env):
 if __name__ == '__main__':
     env = SawyerEnv()
 
+    global startVar, startvar2
+    startVar = env.limb.endpoint_pose()["position"]
+    startVar2 = env.limb.endpoint_pose()["orientation"]
     env.go_to_cartesian(0.25, 0.25, 0.25, 0, 0, 0, 0)
     env.reset()
     rate = rospy.Rate(10)
