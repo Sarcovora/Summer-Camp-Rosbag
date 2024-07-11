@@ -141,13 +141,16 @@ def run_episode(policy, env):
 if __name__ == '__main__':
     env = SawyerEnv()
 
+    #saves current pose of robot    
     env.save_pose()
 
     rate = rospy.Rate(10)
     tempVar = env.limb.endpoint_pose()["position"]
     tempVar2 = env.limb.endpoint_pose()["orientation"]
+    #moves robot slightly
     for i in range(10):
         env.go_to_cartesian(tempVar.x, tempVar.y, tempVar.z - .1, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w)
+    #resets to saved pose of robot
     env.reset()
     
     rate.sleep()
