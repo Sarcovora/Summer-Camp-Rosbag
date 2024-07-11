@@ -243,7 +243,7 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
         sys.exit(1)
     listener(bag_duration + 2)
     print("lmao2")
-    record_thread.join()
+    record_thread.join() # the issue is here (for future reference)
     # hdf5_thread.join(bag_duration + 3) # 3 second buffer so code doesn't blow up in our face
     input("Press Enter to exit...")
     print("Killing rosnode processes")
