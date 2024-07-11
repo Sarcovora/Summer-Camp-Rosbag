@@ -86,6 +86,7 @@ def color_image_callback(data):
 
         color_list.append(rgb_arr)
         color_offset += 1
+        print("color")
 
         # cv2.imshow("Color Image", cv_image)
         # cv2.waitKey(1)
@@ -102,6 +103,7 @@ def depth_image_callback(data):
 
         depth_list.append(depth_arr)
         depth_offset += 1
+        print("depth")
 
         # cv2.imshow("Depth Image", cv_image)
         # cv2.waitKey(1)
@@ -113,6 +115,7 @@ def bariflex_callback(data):
     regex = [float(x.group()) for x in re.finditer(r"-{0,1}\d+\.\d+", data.data)]
     bariflex_list.append(regex)
     bariflex_offset += 1
+    print("bari")
 
 def listener(duration):
     global uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr
@@ -163,12 +166,14 @@ def listener(duration):
             uber_depth_arr.append(depth_list[-1 * depth_offset])
             uber_bariflex_arr.append(bariflex_list[-1 * bariflex_offset])
             uber_action_arr.append([translation, quaternion, bariflex_list[-1 * bariflex_offset][0]])
+            print("appends")
 
             color_offset = 0
             depth_offset = 0
             bariflex_offset = 0
         except Exception as e:
-            print("oops: ", e)
+            # print("oops: ", e)
+            continue
     print("lmao")
         
 def write_hdf5(name):
@@ -190,8 +195,10 @@ def signal_handler(sig, frame):
     print("\nStopping recording...")
     recording = False
 
-def record_rosbag():
+def record_rosbag(duration):
     global recording, bag_path
+    start_time = time.time()
+    end_time = start_time + duration
     target_bag_path = generate_bag_path()
     print("target_bag_path:", target_bag_path)
     process = subprocess.Popen([
@@ -210,8 +217,8 @@ def record_rosbag():
         '/bariflex_motion'
     ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     print("started recording")
-    while recording:
-        time.sleep(1)
+    while time.time() <= end_time:
+        time.sleep(0.1)
     process.terminate()
     process.wait()
 
@@ -221,7 +228,7 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
     signal.signal(signal.SIGINT, signal_handler)
 
     info_dict = yaml.load(subprocess.Popen(['rosbag', 'info', '--yaml', bag_path], stdout=subprocess.PIPE).communicate()[0], Loader=yaml.FullLoader)
-    bag_duration = info_dict['duration']
+    bag_duration = info_dict['duration'] / bag_playback_rate
 
     subprocess.run(['rosparam', 'set', 'use_sim_time', 'true'])
 
@@ -232,7 +239,7 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
     # Run the image_transport republish commands
     subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressed', 'in:=/camera/color/image_raw', 'raw', 'out:=/camera/color/image_raw'])
 
-    record_thread = threading.Thread(target=record_rosbag)
+    record_thread = threading.Thread(target=record_rosbag, args=(bag_duration,))
     # hdf5_thread = threading.Thread(target=listener)
     record_thread.start()
     # hdf5_thread.start()
@@ -242,10 +249,10 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
         print("ERR: Couldn't find rosbag file. Exiting.")
         sys.exit(1)
     listener(bag_duration + 0.5)
-    print("lmao2")
+    print(f"{len(uber_color_arr)}")
     record_thread.join() # the issue is here (for future reference)
-    # hdf5_thread.join(bag_duration + 3) # 3 second buffer so code doesn't blow up in our face
-    input("Press Enter to exit...")
+    print("lmao3")
+    # hdf5_thread.join(bag_duration + 3) # 3 second buffer so code doesn't blow up in our face -- dont multithread this for future reference
     print("Killing rosnode processes")
     subprocess.run(['rosnode', 'kill', '--all'])
     write_hdf5(bag_path)
