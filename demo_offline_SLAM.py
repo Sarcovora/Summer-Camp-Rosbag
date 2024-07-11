@@ -241,7 +241,7 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
     else:
         print("ERR: Couldn't find rosbag file. Exiting.")
         sys.exit(1)
-    listener(bag_duration + 2)
+    listener(bag_duration + 0.5)
     print("lmao2")
     record_thread.join() # the issue is here (for future reference)
     # hdf5_thread.join(bag_duration + 3) # 3 second buffer so code doesn't blow up in our face
