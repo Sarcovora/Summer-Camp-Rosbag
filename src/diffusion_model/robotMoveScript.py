@@ -138,12 +138,12 @@ if __name__ == '__main__':
     global startVar, startvar2
     startVar = env.limb.endpoint_pose()["position"]
     startVar2 = env.limb.endpoint_pose()["orientation"]
-    env.go_to_cartesian(0.25, 0.25, 0.25, 0, 0, 0, 0)
+    env.go_to_cartesian(0, 0, 5, 0, 0, 0, 0)
     env.reset()
     rate = rospy.Rate(10)
-    tempVar = env.limb.endpoint_pose()["position"]
-    tempVar2 = env.limb.endpoint_pose()["orientation"]
-    for i in range(100):
-        env.go_to_cartesian(tempVar.x, tempVar.y, tempVar.z - .05, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w)
+    # tempVar = env.limb.endpoint_pose()["position"]
+    # tempVar2 = env.limb.endpoint_pose()["orientation"]
+    # for i in range(100):
+    #     env.go_to_cartesian(tempVar.x, tempVar.y, tempVar.z - .05, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w)
     
     rate.sleep()
