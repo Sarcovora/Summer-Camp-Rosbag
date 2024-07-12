@@ -124,11 +124,11 @@ def sync_callback(color, depth, bariflex):
         else:
             rel_pose = transform_matrix
         prev_pose = transform_matrix
-        deltaTrans = []
+        deltaTrans = [0, 0, 0]
         deltaTrans[0] = rel_pose[0, 3]
         deltaTrans[1] = rel_pose[1, 3]
         deltaTrans[2] = rel_pose[2, 3]
-        deltaQuat = []
+        deltaQuat = [0, 0, 0, 1]
         deltaQuat = quaternion_from_matrix(rel_pose)
         # record the relative pose together with the most recent depth and color image received by subscribers
         if rgb_arr is not None and depth_arr is not None and regex is not None:
