@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import pdb
 import os
 import signal
 import subprocess
@@ -110,94 +109,6 @@ def bariflex_callback(data):
     regex = [float(x.group()) for x in re.finditer(r"-{0,1}\d+\.\d+", data.data)]
     latest_bariflex = regex[0]
 
-def sync_callback(color, depth, bariflex):
-    try:
-        bridge = CvBridge()
-        cv_image = bridge.compressed_imgmsg_to_cv2(color, "bgr8")
-        cv_image = cv2.resize(cv_image, (320, 180), interpolation=cv2.INTER_AREA)
-        rgb_arr = np.asarray(cv_image)
-        
-        uber_color_arr.append(rgb_arr)
-
-    except CvBridgeError as e:
-        rospy.logerr("CvBridge Error: {0}".format(e))
-        
-    try:
-        bridge = CvBridge()
-        cv_image = bridge.imgmsg_to_cv2(depth, "16UC1")
-        cv_image = cv2.resize(cv_image, (320, 180), interpolation=cv2.INTER_AREA)
-        depth_arr = np.asarray(cv_image)
-
-        uber_depth_arr.append(depth_arr)
-
-        # cv2.imshow("Depth Image", cv_image)
-        # cv2.waitKey(1)
-    except CvBridgeError as e:
-        rospy.logerr("CvBridge Error: {0}".format(e))
-
-    regex = [float(x.group()) for x in re.finditer(r"-{0,1}\d+\.\d+", bariflex.data)]
-    uber_bariflex_arr.append(regex)
-
-    tf_buffer = tf2_ros.Buffer()
-    tf_listener = tf2_ros.TransformListener(tf_buffer)
-
-    try:
-        # tf lookup
-        # tf_listener.waitForTransform("/camera_link", "/odom", now, rospy.Duration(2))
-        trans = tf_buffer.lookup_transform('camera_link', 'odom', rospy.Time())
-        translation = trans.transform.translation
-        rotation = trans.transform.rotation
-
-        # compute the 4x4 transform matrix representing the pose in the map
-        mat = quaternion_matrix([rotation.x, rotation.y, rotation.z, rotation.w])
-        transform_matrix = np.identity(4)
-        transform_matrix[:3, :3] = mat[:3, :3]
-        transform_matrix[0, 3] = translation.x
-        transform_matrix[1, 3] = translation.y
-        transform_matrix[2, 3] = translation.z
-        # compute the relative pose between this pose and the previous pose, prev_pose
-        if prev_pose is not None:
-            inv_prev = inv(prev_pose)
-            rel_pose = np.matmul(inv_prev, transform_matrix)
-        else:
-            rel_pose = transform_matrix
-        prev_pose = transform_matrix
-        deltaTrans = []
-        deltaTrans[0] = rel_pose[0, 3]
-        deltaTrans[1] = rel_pose[1, 3]
-        deltaTrans[2] = rel_pose[2, 3]
-        deltaQuat = []
-        deltaQuat = quaternion_from_matrix(rel_pose)
-        # record the relative pose together with the most recent depth and color image received by subscribers
-        if latest_color is not None:
-            uber_color_arr.append(latest_color)
-        if latest_depth is not None:
-            uber_depth_arr.append(latest_depth)
-        if latest_bariflex is not None:
-            uber_action_arr.append([deltaTrans, deltaQuat, latest_bariflex])
-        print("appends")
-    except Exception as e:
-        print("oops: ", e)
-
-
-    
-
-def listener_sync(duration):
-    start_time = time.time()
-    end_time = start_time + duration
-    rospy.init_node("hdf5_parser", anonymous=True)
-
-    color_sub = message_filters.Subscriber("/camera/color/image_raw/compressed", CompressedImage)
-    depth_sub = message_filters.Subscriber("/camera/aligned_depth_to_color/image_raw", Image)
-    bariflex_sub = message_filters.Subscriber("/bariflex", String)
-
-    synch = message_filters.TimeSynchronizer([color_sub, depth_sub, bariflex_sub], 10)
-    synch.registerCallback(sync_callback)
-    rate = rospy.Rate(10)
-    while time.time() <= time.time():
-        rate.sleep()
-
-
 def listener(duration):
     global uber_color_arr, uber_depth_arr, uber_bariflex_arr, uber_action_arr
     rospy.init_node("hdf5_parser", anonymous=True)
@@ -265,15 +176,11 @@ def listener(duration):
         
 def write_hdf5(name):
     global uber_color_arr, uber_depth_arr, uber_action_arr
-    # breakpoint()
-    # print(str(type(uber_color_arr[0])) + " " + str(type(uber_color_arr[-1])))
     with h5py.File(os.path.join(data_dir, "rosbag.hdf5"), "a") as hdf5_file:
         group = hdf5_file.create_group(name)
         group.create_dataset(f"{name}_color_images", data=np.array(uber_color_arr))
         group.create_dataset(f"{name}_depth_images", data=np.array(uber_depth_arr))
-        group.create_dataset(f"{name}_bariflex_actions", data=np.array(uber_bariflex_arr))
         group.create_dataset(f"{name}_actions", data=np.array(uber_action_arr))
-        print(f"{len(uber_color_arr)} {len(uber_depth_arr)} {len(uber_bariflex_arr)} {len(uber_action_arr)}")
 
 def generate_bag_path():
     global data_dir, dict_path, bag_name, map_name
@@ -301,7 +208,7 @@ def record_rosbag(duration):
         '/camera/gyro/imu_info',
         '/camera/accel/imu_info',
         '/tf_static',
-        '/tf',
+        '/tf'   ,
         '/bariflex',
         '/bariflex_motion'
     ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
@@ -339,10 +246,7 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.1):
         print("ERR: Couldn't find rosbag file. Exiting.")
         sys.exit(1)
     listener(bag_duration + 0.5)
-    print(f"{len(uber_color_arr)}")
-    record_thread.join() # the issue is here (for future reference)
-    print("lmao3")
-    # hdf5_thread.join(bag_duration + 3) # 3 second buffer so code doesn't blow up in our face -- dont multithread this for future reference
+    record_thread.join()
     print("Killing rosnode processes")
     subprocess.run(['rosnode', 'kill', '--all'])
     print("writing start")

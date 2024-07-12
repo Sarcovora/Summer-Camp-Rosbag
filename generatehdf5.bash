@@ -22,7 +22,7 @@ for file in "$1"/*; do
             exit 1
         fi
 
-        $PYTHON_CMD unsynchronized.py "$file"
+        $PYTHON_CMD call_this_bash.py "$file"
 
         echo "Press Ctrl^C to exit"
         trap 'rosnode kill --all' SIGINT
