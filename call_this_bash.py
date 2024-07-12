@@ -70,8 +70,8 @@ data_dir = os.path.join(script_dir, 'data')
 
 uber_color_arr, uber_depth_arr, uber_action_arr = [], [], []
 
-tf_buffer = tf2_ros.Buffer()
-tf_listener = tf2_ros.TransformListener(tf_buffer)
+tf_buffer = None
+tf_listener = None
 
 def sync_callback(color, depth, bariflex):
     global uber_color_arr, uber_depth_arr, uber_action_arr
@@ -138,9 +138,14 @@ def sync_callback(color, depth, bariflex):
         print("oops: ", e)
 
 def listener_sync(duration):
+    global tf_buffer, tf_listener
+    
     start_time = time.time()
     end_time = start_time + duration
     rospy.init_node("hdf5_parser", anonymous=True)
+    
+    tf_buffer = tf2_ros.Buffer()
+    tf_listener = tf2_ros.TransformListener(tf_buffer)
 
     color_sub = message_filters.Subscriber("/camera/color/image_raw/compressed", CompressedImage)
     depth_sub = message_filters.Subscriber("/camera/aligned_depth_to_color/image_raw", Image)
