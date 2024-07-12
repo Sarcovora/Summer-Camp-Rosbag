@@ -73,9 +73,12 @@ uber_color_arr, uber_depth_arr, uber_action_arr = [], [], []
 tf_buffer = None
 tf_listener = None
 
+prev_pose = None
+
 def sync_callback(color, depth, bariflex):
     global uber_color_arr, uber_depth_arr, uber_action_arr
     global tf_buffer, tf_listener
+    global prev_pose
 
     try:
         bridge = CvBridge()
