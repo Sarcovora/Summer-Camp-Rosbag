@@ -151,7 +151,7 @@ def listener_sync(duration):
     depth_sub = message_filters.Subscriber("/camera/aligned_depth_to_color/image_raw", Image)
     bariflex_sub = message_filters.Subscriber("/bariflex", String)
 
-    sync = message_filters.TimeSynchronizer([color_sub, depth_sub, bariflex_sub], 10)
+    sync = message_filters.ApproximateTimeSynchronizer([color_sub, depth_sub, bariflex_sub], 10, allow_headerless=True)
     sync.registerCallback(sync_callback)
     rate = rospy.Rate(10)
     while time.time() <= end_time:
