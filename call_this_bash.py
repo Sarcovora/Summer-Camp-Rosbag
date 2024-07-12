@@ -173,7 +173,7 @@ def signal_handler(sig, frame):
     print("\nStopping recording...")
     recording = False
 
-def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.1):
+def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
     # global source_map_file_path, bag_path, bag_playback_rate
 
     signal.signal(signal.SIGINT, signal_handler)
