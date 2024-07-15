@@ -29,8 +29,7 @@ with h5py.File('dataset.hdf5', 'w') as f:
     for i in range(4):
         # Add the first trajectory group 'demo_0'
         demo_0 = data_group.create_group(f'demo_{i}')
-        demo_0.attrs['num_samples'] = 100  # Number of state-action samples in this trajectory (example value)
-        demo_0.attrs['model_file'] = '<xml_string>'  # Example MJCF MuJoCo model
+        demo_0.attrs['num_samples'] = N  # Number of state-action samples in this trajectory (example value)
     
         # demo_0.create_dataset('states', data=np.random.random((N, D)))
         demo_0.create_dataset('actions', data=np.random.random((N, A)))
