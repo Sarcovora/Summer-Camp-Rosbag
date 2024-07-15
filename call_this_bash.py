@@ -159,7 +159,7 @@ def listener_sync(duration):
     sync.registerCallback(sync_callback)
     # rate = rospy.Rate(10)
     while time.time() <= end_time:
-        print(f"Status: sleeping - {time.time()}, {end_time}")
+        # print(f"Status: sleeping - {time.time()}, {end_time}")
         # rate.sleep()
         time.sleep(0.1)
 
@@ -167,19 +167,25 @@ def write_hdf5():
     global uber_color_arr, uber_depth_arr, uber_pos_arr, uber_action_arr
     global hdf5_name
 
-    if len(uber_color_arr) == 0:
+    if len(uber_action_arr) == 0:
         print('no transitions found')
         return 
 
     with h5py.File(os.path.join(data_dir, hdf5_name), "a") as hdf5_file:
+        
+        if 'data' not in hdf5_file:
+            data_group = hdf5_file.create_group('data')
+        else:
+            data_group = hdf5_file['data']
+
         num_demos = len(hdf5_file.keys())
         name = f"demo_{num_demos}"
-        group = hdf5_file.create_group(name)
+        group = data_group.create_group(name)
         # hdf5_file
-        group['num_samples'] = len(uber_action_arr)
+        group.attrs['num_samples'] = len(uber_action_arr)
         group.create_dataset("obs/color", data=np.array(uber_color_arr))
-        group.create_dataset("obs/depth", data=np.array(uber_depth_arr))
-        group.create_dataset("obs/pos", data=np.array(uber_pos_arr))
+        group.create_dataset("obs/depth", data=np.array(uber_depth_arr).reshape(len(uber_depth_arr), 320, 180, 1))
+        group.create_dataset("obs/pos", data=np.array(uber_pos_arr).reshape(len(uber_pos_arr), 1))
         group.create_dataset("actions", data=np.array(uber_action_arr))
     
     print(f'writing {len(uber_action_arr)} transitions')

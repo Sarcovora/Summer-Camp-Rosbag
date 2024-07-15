@@ -36,7 +36,7 @@
         }
     },
     "train": {
-        "data": "/home/abba/Summer-Camp-Rosbag/scripts/dataset.hdf5",
+        "data": "/home/abba/hsra_data/group1_final/data/rosbag.hdf5",
         "output_dir": "../bc_trained_models",
         "num_data_workers": 0,
         "hdf5_cache_mode": "all",
@@ -164,10 +164,10 @@
         "modalities": {
             "obs": {
                 "low_dim": [
-                    "bariflex"
+                    "pos"
                 ],
-                "rgb": ["image_color"],
-                "depth": ["image_depth"],
+                "rgb": ["color"],
+                "depth": ["depth"],
                 "scan": []
             },
             "goal": {
