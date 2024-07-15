@@ -1,3 +1,5 @@
+#Forked Version
+
 import rospy
 import argparse
 import intera_interface
@@ -14,6 +16,9 @@ import math
 import time
 import pyrealsense2 as rs
 import cv2
+import re
+from std_msgs.msg import String
+from collections import deque
 
 import transforms3d as tf3d
 
@@ -23,10 +28,13 @@ from numpy import linalg as LA
 
 
 class SawyerEnv():
+
     def __init__(self) -> None:
         rospy.init_node('go_to_cartesian_pose_py')
         self.limb = Limb()
         self.tip_name = "right_hand"
+
+        rospy.Subscriber('/bariflex', String, self.callback_fn)
 
         #self.pipeline = rs.pipeline()
         #self.config = rs.config()
@@ -38,10 +46,45 @@ class SawyerEnv():
         # Start the camera
         #self.pipeline.start(self.config)
         self.rate = rospy.Rate(10)
-   
+
+    def callback_fn(self, msg):
+        # current = float(re.match(r".Iq-*\d+\.\d+)", msg.data).group(1))
+        # desire = float(re.match(r".des-*\d+\.\d+)", msg.data).group(1))
+        # position = float(re.match(r".pos-*\d+\.\d+)", msg.data).group(1))
+
+        if msg.data[-5] == '-':
+            current = (float(msg.data[-5:]))
+        else:
+            current = (float(msg.data[-4:]))
+
+        if msg.data[4] == '-':
+            desire = (float(msg.data[4:9]))
+        else:
+            desire = (float(msg.data[4:8]))
+
+        if msg.data[14] == '-':
+            position = (float(msg.data[14:19]))
+        else:
+            position = (float(msg.data[14:18]))
+        
+        # print("des: " + desire + " pos: " + position + " Iq: " + current)
+        self.bariflex_state = position
+
+    def get_bariflex_state(self):
+        return self.bariflex_state
+    def save_pose(self):
+        global neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w
+        tempVar = env.limb.endpoint_pose()["position"]
+        tempVar2 = env.limb.endpoint_pose()["orientation"]
+        neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w = tempVar.x, tempVar.y, tempVar.z, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w
+
     # closes the camera
     def reset(self):
-        self.pipeline.stop()
+
+        self.go_to_cartesian(neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w)
+
+        # self.limb.move_to_neutral(self, timeout=15.0, speed=0.3)
+        # self.pipeline.stop()
 
     # referred to this: # https://github.com/RethinkRobotics/intera_sdk/blob/master/intera_examples/scripts/ik_service_client.py
     def go_to_cartesian(self, x1, y1, z1, q1, q2, q3, q4, tip_name="right_hand"):    
@@ -132,7 +175,8 @@ class SawyerEnv():
         # TODO : here apply the action, use go_to_cartesian
        
         # TODO: return the observation
-        new_coords = self.go_to_cartesian(action[0], action[1], action[2], action[3], action[4], action[5], action[6])
+        #new_coords = 
+        self.go_to_cartesian(action[0], action[1], action[2], action[3], action[4], action[5], action[6])
         #image = self.capture_image()
         self.rate.sleep()
         # return {"new_pose": new_coords, "new_image": image}'''
@@ -148,8 +192,20 @@ def normalize(quaternion):
 
 if __name__ == '__main__':
     env = SawyerEnv()
+
+
+    #saves current pose of robot    
+    env.save_pose()
+
     rate = rospy.Rate(10)
+    tempVar = env.limb.endpoint_pose()["position"]
+    tempVar2 = env.limb.endpoint_pose()["orientation"]
+    #moves robot slightly
+    for i in range(10):
+        env.go_to_cartesian(tempVar.x, tempVar.y, tempVar.z - .1, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w)
+    #resets to saved pose of robot
+    env.reset()
+    
+    rate.sleep()
 
     env.replay_bag("dummy_data1.hdf5")
-   
-    rate.sleep()
