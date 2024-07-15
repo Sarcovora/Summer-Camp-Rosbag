@@ -167,6 +167,10 @@ def write_hdf5():
     global uber_color_arr, uber_depth_arr, uber_pos_arr, uber_action_arr
     global hdf5_name
 
+    if len(uber_color_arr) == 0:
+        print('no transitions found')
+        return 
+
     with h5py.File(os.path.join(data_dir, hdf5_name), "a") as hdf5_file:
         num_demos = len(hdf5_file.keys())
         name = f"demo_{num_demos}"
@@ -177,6 +181,8 @@ def write_hdf5():
         group.create_dataset("obs/depth", data=np.array(uber_depth_arr))
         group.create_dataset("obs/pos", data=np.array(uber_pos_arr))
         group.create_dataset("actions", data=np.array(uber_action_arr))
+    
+    print(f'writing {len(uber_action_arr)} transitions')
 
 def signal_handler(sig, frame):
     sys.exit(1)
