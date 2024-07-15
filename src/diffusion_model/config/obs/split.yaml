@@ -1,0 +1,7 @@
+name: split
+
+obs_keys:
+  - image_color
+  - image_depth
+  - gripper_pos
+  - actions

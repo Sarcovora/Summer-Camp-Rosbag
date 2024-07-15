@@ -15,29 +15,65 @@ from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.training_utils import EMAModel
 from diffusers.optimization import get_scheduler
 
+import os
+import hydra
+from pprint import pprint 
+
+
 from helper_functions import get_into_dataloader_format
+
+CONFIG = os.path.join(os.getcwd(), 'config')
 
 # Class to handle training model, saves important data
 class Trainer():
-    def __init__(self, demonstrations, obs_horizon, pred_horizon, 
-                 pose_stats, orientation_stats, 
-                 img_stats=None, batch_size=64, device="cpu", 
-                 learning_rate=1e-4, save_file="checkpoint.pth"):
+    def __init__(self, 
+                 cfg,
+                 demonstrations,
+                 pose_stats,
+                 orientation_stats,
+                 img_stats=None
+                #  demonstrations, 
+                #  obs_horizon, 
+                #  pred_horizon, 
+                #  pose_stats, 
+                #  orientation_stats, 
+                #  img_stats=None, 
+                #  batch_size=64, 
+                #  device="cpu", 
+                #  learning_rate=1e-4, 
+                #  save_file="checkpoint.pth"):
+    ):
         '''
         Init function, saves relevant data in class.
         '''
+        self.device = cfg.train.device
+
         self.demos = demonstrations
-        self.obs_horizon = obs_horizon
-        self.pred_horizon = pred_horizon
         self.pose_stats = pose_stats
         self.orientation_stats = orientation_stats
         self.img_stats = img_stats
-        self.batch_size = batch_size
-        self.device = device
-        self.lr = learning_rate
-        self.save_file = save_file
+        
+        self.obs_keys = cfg.obs.obs_keys
+        self.obs_horizon = cfg.model.obs_horizon
+        self.pred_horizon = cfg.model.pred_horizon
+        self.execution_horizon = cfg.model.execution_horizon
+         
+        self.vision_feature_dim = cfg.model.vision_encoder_kwargs.vision_feature_dim
+        self.lowdim_obs_dim = cfg.model.vision_encoder_kwargs.lowdim_obs_dim
+        self.obs_dim = self.vision_feature_dim * 2 + self.lowdim_obs_dim
+        self.action_dim = cfg.model.vision_encoder_kwargs.action_dim
+        self.num_diffusion_iters = cfg.train.scheduler.noise_scheduler.num_diffusion_iters
+        
+        self.batch_size = cfg.train.batch_size
+        self.lr = cfg.train.optim.learning_rate
+        self.weight_decay = cfg.train.optim.weight_decay
+        self.num_epochs = cfg.train.num_epochs
+        
+        self.lr_scheduler = cfg.train.scheduler.lr_scheduler.name
+        self.num_wramup_steps = cfg.train.scheduler.lr_scheduler.num_warmup_steps    
 
-
+        self.save_file = cfg.train.save_file
+        
     def get_dataloader(self):
         '''
         Gets the dataloader for the training set.
@@ -47,26 +83,23 @@ class Trainer():
         return torch.utils.data.DataLoader(diff_dataset, batch_size=self.batch_size, shuffle=True)
 
 
-
     def get_model(self):
         '''
         Gets model and exponential moving average.
         '''
         vision_encoder = model.get_resnet("resnet18")
         vision_encoder = model.replace_bn_with_gn(vision_encoder)
-
-        vision_feature_dim = 512
-        lowdim_obs_dim = 7
-        obs_dim = vision_feature_dim + lowdim_obs_dim
-        action_dim = 7
+        
+        depth_encoder = model.get_cnn("nature_cnn")
 
         noise_pred_net = model.ConditionalUnet1D(
-            input_dim=action_dim,
-            global_cond_dim=obs_dim*self.obs_horizon
+            input_dim=self.action_dim,
+            global_cond_dim=self.obs_dim*self.obs_horizon
         )
 
         nets = nn.ModuleDict({
             'vision_encoder': vision_encoder,
+            'depth_encoder': depth_encoder,
             'noise_pred_net': noise_pred_net
         })
 
@@ -90,45 +123,45 @@ class Trainer():
             prediction_type='epsilon'
         )
     
-    def train(self, checkpoint=None, num_epochs=20, print_stats=True):
+    def train(self, checkpoint=None, print_stats=True):
         '''
         Runs training loop.
         '''
-        num_diffusion_iters = 100
 
         min_loss = 1000000000
         min_epoch = 0
 
         trainloader = self.get_dataloader()
-        nets, ema = self.get_model() if not checkpoint else model.load_pretrained(checkpoint, device, self.obs_horizon)
-        noise_scheduler = self.get_noise_scheduler(num_diffusion_iters)
+        nets, ema = self.get_model() if not checkpoint else model.load_pretrained(checkpoint, self.device, self.obs_horizon)
+        noise_scheduler = self.get_noise_scheduler(self.num_diffusion_iters)
 
         optimizer = torch.optim.AdamW(
             params=nets.parameters(),
             lr=self.lr,
-            weight_decay=1e-6
+            weight_decay=self.weight_decay
         )
 
         lr_scheduler = get_scheduler(
-            name="cosine",
+            name=self.lr_scheduler,
             optimizer=optimizer,
-            num_warmup_steps=500,
-            num_training_steps=len(trainloader) * num_epochs
+            num_warmup_steps=self.num_wramup_steps,
+            num_training_steps=len(trainloader) * self.num_epochs
         )
 
         epoch_loss = []
 
-        for epoch in range(num_epochs):
+        for epoch in range(self.num_epochs):
             total_loss = 0.0
             for batch in trainloader:
-                image = batch["image"].to(self.device)
-                agent_pos = batch["agent_pos"].to(self.device)
-                action = batch["action"].to(self.device)
+                image, depth_image, agent_pos, action = [batch[key].to(self.device) for key in self.obs_keys]
                 B = agent_pos.shape[0]
 
                 image_features = nets["vision_encoder"](image.flatten(end_dim=1))
-                image_features = image_features.reshape(*image.shape[:2],-1)
-                obs_features = torch.cat([image_features, agent_pos], dim=-1)
+                image_features = image_features.reshape(*image.shape[:2],-1)                
+                
+                # cnn (depth image)
+                depth_features = nets["depth_encoder"](depth_image.flatten(end_dim=1)).reshape(*depth_image.shape[:2],-1)
+                obs_features = torch.cat([image_features, depth_features, agent_pos], dim=-1)
                 obs_cond = obs_features.flatten(start_dim=1)
 
                 noise = torch.randn(action.shape, device=self.device)
@@ -171,62 +204,56 @@ class Trainer():
         print(f"\n\nMinimum Loss: {min_loss:.4f} on epoch {min_epoch}")
     
 
-if __name__ == "__main__":
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Device: {device}")
+@hydra.main(config_path=CONFIG, config_name="config", version_base="1.3.2")
+def main(cfg):
+    pprint(cfg)
 
-    dataset_file = "../../test_cup_grabbing.hdf5"
+    # (dataset_list, pos_stats, or_stats) = get_into_dataloader_format(dataset_file)
 
-    (dataset_list, pos_stats, or_stats) = get_into_dataloader_format(dataset_file)
+    # with open("stats.json", "r") as file:
+    #     stats_dict = json.load(file)
+    #     stats_dict["pose_stats"] = pos_stats
+    #     stats_dict["orientation_stats"] = or_stats
 
-    with open("stats.json", "r") as file:
-        stats_dict = json.load(file)
-        stats_dict["pose_stats"] = pos_stats
-        stats_dict["orientation_stats"] = or_stats
-
-    with open("stats.json", "w") as file:
-        json.dump(stats_dict, file, indent=4)
+    # with open("stats.json", "w") as file:
+    #     json.dump(stats_dict, file, indent=4)
 
 
     pred_horizon = 4
     obs_horizon = 6
 
-    print(dataset_list[0][0]["image"].shape)
-    print(dataset_list[0][0]["position"].shape)
-    print(dataset_list[0][0]["orientation"].shape)
+    # print(dataset_list[0][0]["image"].shape)
+    # print(dataset_list[0][0]["position"].shape)
+    # print(dataset_list[0][0]["orientation"].shape)
 
-    trainer = Trainer(dataset_list, obs_horizon, pred_horizon, 
-        pos_stats, or_stats, batch_size=64, device=device, learning_rate=5e-6)
+    trainer = Trainer(cfg, None, None, None)
+    
+    nets, ema = trainer.get_model()
+    
+    image = torch.zeros((1, obs_horizon, 3, 96, 96))
+    depth_image = torch.zeros((1, obs_horizon, 1, 96, 96))
+    agent_pos = torch.zeros((1, obs_horizon, 1))    # gripper state
+    action = torch.zeros((1, pred_horizon, 8))
+    
+    B = agent_pos.shape[0]
 
-    dataloader = trainer.get_dataloader()
-    print(f"Length of Dataloader: {len(dataloader)}")
-    for batch in dataloader:
-        print(batch["image"].shape)
-        print(batch["agent_pos"].shape)
-        print(batch["action"].shape)
-        break
+    image_features = nets["vision_encoder"](image.flatten(end_dim=1))
+    image_features = image_features.reshape(*image.shape[:2],-1)
+    
+    depth_features = nets["depth_encoder"](depth_image.flatten(end_dim=1)).reshape(*depth_image.shape[:2],-1)
+    
+    obs_features = torch.cat([image_features, depth_features, agent_pos], dim=-1)
+    obs_cond = obs_features.flatten(start_dim=1)
+    
+    noisy_actions = torch.randn(action.shape)
+    diffusion_iter = torch.zeros((1,))
+    
+    noise_pred = nets["noise_pred_net"](noisy_actions, 
+                                        diffusion_iter, global_cond=obs_cond)
+    
+    denoised_actions = noise_pred - noise_pred
+    print(denoised_actions.shape, denoised_actions)
+    
 
-
-    print("\nTraining...\n")
-    trainer.train(checkpoint=None, num_epochs=200, print_stats=True)
-
-    # For debugging
-    # test = []
-    # for i in range(5):
-    #     test.append([])
-    #     for x in range(5):
-    #         temp = {}
-    #         temp["image"] = np.random.randint(0, 255, size=(3, 666, 100))
-    #         temp["position"] = np.random.rand(1, 3)
-    #         temp["orientation"] = np.random.rand(1, 4) * 2 - 1
-    #         test[i].append(temp)
-
-    # print(test[0][0]["image"].shape)
-    # print(test[0][0]["position"].shape)
-    # print(test[0][0]["orientation"].shape)
-
-    # pose_stats = {"min" : 0, "max": 1}
-    # orientation_stats = {"min" : -1, "max" : 1}
-    # image_stats = {"min" : 0, "max" : 255}
-
-    # trainer.train(num_epochs=2, print_stats=True)
+if __name__ == "__main__":
+    main()

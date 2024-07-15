@@ -68,26 +68,27 @@ def record_rosbag(now):
             '/camera/aligned_depth_to_color/camera_info',
             '/camera/aligned_depth_to_color/image_raw',
             '/camera/color/camera_info',
-            '/camera/color/image_raw/',
+            '/camera/color/image_raw',
             '/camera/imu',
             '/camera/gyro/imu_info',
             '/camera/accel/imu_info',
             '/tf_static',
-            '/bariflex'
+            '/bariflex',
+            '/bariflex_motion'
         ])
     else:
         process = subprocess.Popen([
             'rosbag', 'record', '-O', bag_path, '-b', '0',
             '/camera/aligned_depth_to_color/camera_info',
-            '/camera/aligned_depth_to_color/image_raw/compressed',
-            '/camera/aligned_depth_to_color/image_raw/compressedDepth',
+            '/camera/aligned_depth_to_color/image_raw',
             '/camera/color/camera_info',
             '/camera/color/image_raw/compressed',
             '/camera/imu',
             '/camera/gyro/imu_info',
             '/camera/accel/imu_info',
             '/tf_static',
-            '/bariflex'
+            '/bariflex',
+            '/bariflex_motion'
         ])
     while recording:
         time.sleep(1)
@@ -108,6 +109,8 @@ def main():
     # Set the current time for the filename
     now = datetime.datetime.now().strftime("%F__%H_%M_%S")
 
+    subprocess.Popen(['rosrun', 'rosserial_python', 'serial_node.py', '/dev/ttyACM0'], stdout=subprocess.DEVNULL,  stderr=subprocess.STDOUT)
+
     # Set ROS parameters
     subprocess.run(['rosparam', 'set', 'use_sim_time', 'false'])
 
@@ -119,10 +122,10 @@ def main():
         map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
 
         print("Creating new map...", map_file_path)
-        os.system(f'touch {map_file_path}.empty')
+        os.system(f'touch {map_file_path}.emp')
 
     else: # DEMO stage
-        
+
         # Show saved maps
         print("These are the saved maps:")
         # saved_maps = os.listdir(os.path.join(script_dir, 'saved_maps'))
@@ -133,7 +136,7 @@ def main():
         # map_file_path = os.path.join(script_dir, 'saved_maps', f'{map_name}.db')
         map_file_path = os.path.join(saved_maps_dir, f'{map_name}.db')
         print("Loading map from file...", map_file_path)
- 
+
     subprocess.Popen(['roslaunch', './launch/d435i_minimal.launch'], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     input("Press Enter to start recording\n")
     print("Press 's' and Enter to stop recording")
@@ -151,6 +154,12 @@ def main():
     # Kill the rest of the processes
     print("Killing rosnode processes")
     subprocess.run(['rosnode', 'kill', '--all'])
+
+    baginfo = os.popen(f'rosbag info {bag_path}').read()
+    print('--------------------------')
+    print('rosbag info:')
+    print(baginfo)
+    print('--------------------------')
 
     if (not mappingStage):
 
@@ -188,6 +197,5 @@ def main():
     print("Recording saved to", bag_path)
 
     input("Recording stopped. Press Enter to exit.")
-
 if __name__ == "__main__":
     main()

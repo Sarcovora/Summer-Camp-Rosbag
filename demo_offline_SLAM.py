@@ -44,35 +44,40 @@ bag_path = 'default_bag_path'
 
 def generate_bag_path():
     global data_dir, dict_path, bag_name, map_name
-    return os.path.join(recreated_bags_dir, f'recreate_{os.path.basename(bag_path)}')
+    return os.path.join(recreated_bags_dir, f'recreatedDemo_{os.path.basename(bag_path)}')
 
 def signal_handler(sig, frame):
     global recording
     print("\nStopping recording...")
     recording = False
 
-def record_rosbag(now):
+def record_rosbag():
     global recording, bag_path
-    bag_path = generate_bag_path(now)
+    target_bag_path = generate_bag_path()
+    print("target_bag_path:", target_bag_path)
     process = subprocess.Popen([
-        'rosbag', 'record', '-O', bag_path, '-b', '0',
+        'rosbag', 'record', '-O', target_bag_path, '-b', '0',
         '/camera/aligned_depth_to_color/camera_info',
+        '/camera/aligned_depth_to_color/image_raw',
         '/camera/aligned_depth_to_color/image_raw/compressedDepth',
         '/camera/color/camera_info',
         '/camera/color/image_raw/compressed',
         '/camera/imu',
-        '/camera/imu_info',
+        '/camera/gyro/imu_info',
+        '/camera/accel/imu_info',
         '/tf_static',
         '/tf',
-        '/bariflex'
-    ])
+        '/bariflex',
+        '/bariflex_motion'
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    print("started recording")
     while recording:
         time.sleep(1)
     process.terminate()
     process.wait()
 
-def rebag():
-    global source_map_file_path, bag_path, bag_playback_rate
+def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
+    # global source_map_file_path, bag_path, bag_playback_rate
 
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -83,8 +88,7 @@ def rebag():
     print("Running image_transport")
 
     # Run the image_transport republish commands
-    # subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressed', 'in:=/camera/color/image_raw', 'raw', 'out:=/camera/color/image_raw'])
-    # subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressedDepth', 'in:=/camera/aligned_depth_to_color/image_raw', 'raw', 'out:=/camera/aligned_depth_to_color/image_raw'])
+    subprocess.Popen(['rosrun', 'image_transport', 'republish', 'compressed', 'in:=/camera/color/image_raw', 'raw', 'out:=/camera/color/image_raw'])
 
     record_thread = threading.Thread(target=record_rosbag)
     record_thread.start()
@@ -96,6 +100,7 @@ def rebag():
         sys.exit(1)
 
     record_thread.join()
+    input("Press Enter to exit...")
     print("Killing rosnode processes")
     subprocess.run(['rosnode', 'kill', '--all'])
 
@@ -110,7 +115,7 @@ def main():
         if (not exists(source_map_file_path)):
             print("The corresponding map file has not been recreated. Exiting.")
             sys.exit(1)
-        rebag()
+        rebag(source_map_file_path=source_map_file_path, bag_path=bag_path, bag_playback_rate=0.5)
     else:
         print("No rosbag file specified. Exiting.")
         sys.exit(1)
