@@ -22,7 +22,9 @@ for file in "$1"/*; do
             exit 1
         fi
 
-        $PYTHON_CMD call_this_bash.py "$file"
+        $PYTHON_CMD call_this_bash.py "$file" &
+        PYTHON_PID=$!
+
 
         echo "Press Ctrl^C to exit"
         trap 'rosnode kill --all' SIGINT
@@ -31,11 +33,17 @@ for file in "$1"/*; do
         DURATION=$(rosbag info --yaml "$file" | grep duration | awk '{print $2}')
         
         SLEEP_TIME=$(echo "$DURATION / 0.5" | bc)
-
-        rosbag play "$file" --rate 0.5 --clock
         
+        sleep 2
+        echo "about to play"
+        rosbag play "$file" --rate 0.5 --clock &
+        ROSBAG_PID=$!
         # Sleep for the calculated time
         sleep $SLEEP_TIME
+
+        kill $ROSBAG_PID
+        kill $PYTHON_PID
+        pkill -f call_this_bash.py
 
     else
         echo "$file is not a regular file, skipping..."
