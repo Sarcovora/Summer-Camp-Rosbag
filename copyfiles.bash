@@ -22,6 +22,6 @@ mkdir -p "$DESTINATION_FOLDER/$NEW_FOLDER_NAME"
 
 # Copy the data folder to the new folder
 cp -r ./data "$DESTINATION_FOLDER/$NEW_FOLDER_NAME"
-cp ./generatehdf5.bash ./call_this_bash.py "$DESTINATION_FOLDER/$NEW_FOLDER_NAME"
+cp ./generatehdf5.bash ./call_this_bash.py ./map_recreate.py "$DESTINATION_FOLDER/$NEW_FOLDER_NAME"
 
 echo "Files have been copied to '$DESTINATION_FOLDER/$NEW_FOLDER_NAME/data'."
