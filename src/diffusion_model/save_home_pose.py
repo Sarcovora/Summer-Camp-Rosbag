@@ -25,16 +25,9 @@ import json
 
 
 dummy_class = SawyerEnv()
-dummy_class.save_pose()
 
-list = []
-list.append(neutralx)
-list.append(neutraly)
-list.append(neutralz)
-list.append(neutral2x)
-list.append(neutral2y)
-list.append(neutral2z)
-list.append(neutral2w)
+dataset = []
+dataset.append(dummy_class.save_pose())
 
 with open("home_pose.json", "w") as final:
-  json.dumps(list, final)
+  json.dumps(dataset, final)
