@@ -32,8 +32,9 @@ from tf.transformations import quaternion_from_matrix
 
 recording = True
 offline = True
+terminated = False
 
-bag_playback_rate = 0.5
+bag_playback_rate = 0.25
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 hdf5_name = "rosbag.hdf5"
@@ -79,6 +80,7 @@ def sync_callback(color, depth, bariflex):
     global uber_color_arr, uber_depth_arr, uber_pos_arr, uber_action_arr
     global tf_buffer, tf_listener
     global prev_pose
+    global terminated
 
     try:
         bridge = CvBridge()
@@ -132,6 +134,9 @@ def sync_callback(color, depth, bariflex):
         deltaQuat = quaternion_from_matrix(rel_pose)
 
         if np.linalg.norm(deltaTrans) >= 10:
+            breakpoint()
+            print("trying terminate")
+            terminated = True
             return 
 
         # record the relative pose together with the most recent depth and color image received by subscribers
@@ -146,6 +151,7 @@ def sync_callback(color, depth, bariflex):
 
 def listener_sync(duration):
     global tf_buffer, tf_listener
+    global terminated
     
     start_time = time.time()
     end_time = start_time + duration
@@ -164,6 +170,9 @@ def listener_sync(duration):
     while time.time() <= end_time:
         # print(f"Status: sleeping - {time.time()}, {end_time}")
         # rate.sleep()
+        if terminated:
+            print("script terminated: transform out of range")
+            break
         time.sleep(0.1)
 
 def write_hdf5():
@@ -191,6 +200,7 @@ def write_hdf5():
 
         num_demos = len(data_group.keys())
         name = f"demo_{num_demos}"
+        print(f"Writing hdf5 group: {name}")
         group = data_group.create_group(name)
         # hdf5_file
         group.attrs['num_samples'] = len(uber_action_arr)
@@ -207,7 +217,7 @@ def signal_handler(sig, frame):
     # print("\nStopping recording...")
     # recording = False
 
-def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
+def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.25):
     # global source_map_file_path, bag_path, bag_playback_rate
 
     signal.signal(signal.SIGINT, signal_handler)
@@ -237,7 +247,7 @@ def rebag(source_map_file_path=None, bag_path=None, bag_playback_rate=0.5):
     write_hdf5()
     print("things were written")
 
-def recreate_mapping(map_file_path=None, bag_path=None, bag_playback_rate=0.5):
+def recreate_mapping(map_file_path=None, bag_path=None, bag_playback_rate=0.25):
 
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -263,11 +273,13 @@ def main():
     
     bag_path = sys.argv[1] if len(sys.argv) > 1 else None
     hdf5_name = sys.argv[2] if len(sys.argv) > 2 else "rosbag.hdf5"
-    bag_rate = 0.5
+    bag_rate = 0.25
 
     if bag_path:
+        print(bag_path)
         map_name = os.path.basename(bag_path).split('_')[1]
         source_map_file_path = os.path.join(recreated_maps_dir, f'{map_name}.db')
+        print(source_map_file_path)
         if not exists(source_map_file_path):
             mapping_bag_path = None
             print("The corresponding map file has not been recreated. Exiting.")

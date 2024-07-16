@@ -1,3 +1,6 @@
 **/.DS_Store
 **/**.bag
-**/data/**
+**/**.hdf5
+**/**.termout
+
+test_generatehdf5.bash

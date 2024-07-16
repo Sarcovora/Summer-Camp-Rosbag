@@ -27,7 +27,7 @@
         <arg name="camera_info_topic" value="/camera/color/camera_info"/>
         <arg name="depth_camera_info_topic" value="/camera/depth/camera_info"/>
         <arg name="rtabmapviz" value="false"/>
-        <arg name="rviz" value="true"/>
+        <arg name="rviz" value="false"/>
     </include>
 
     <include file="$(find robot_localization)/launch/ukf_template.launch"/>
