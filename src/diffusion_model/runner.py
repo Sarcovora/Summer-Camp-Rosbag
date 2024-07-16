@@ -35,7 +35,11 @@ CONFIG = os.path.join(os.getcwd(), 'config')
 class Runner():
     def __init__(self, side="right", obs_horizon=6, pred_horizon=4, #pred horizon must be a multiple of 4
                 model_file="checkpoint.pth", stats_file="stats.json", device="cpu"):
-        
+
+        with open("home_pose.json") as file:
+                    data = file.load()
+
+                    
         self.env = SawyerEnv()
         
         # rospy.init_node("Runner")
