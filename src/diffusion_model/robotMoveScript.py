@@ -1,5 +1,3 @@
-#Forked Version
-
 import rospy
 import argparse
 import intera_interface
@@ -16,9 +14,6 @@ import math
 import time
 import pyrealsense2 as rs
 import cv2
-import re
-from std_msgs.msg import String
-from collections import deque
 
 import transforms3d as tf3d
 
@@ -28,13 +23,10 @@ from numpy import linalg as LA
 
 
 class SawyerEnv():
-
     def __init__(self) -> None:
         rospy.init_node('go_to_cartesian_pose_py')
         self.limb = Limb()
         self.tip_name = "right_hand"
-
-        rospy.Subscriber('/bariflex', String, self.callback_fn)
 
         #self.pipeline = rs.pipeline()
         #self.config = rs.config()
@@ -46,45 +38,10 @@ class SawyerEnv():
         # Start the camera
         #self.pipeline.start(self.config)
         self.rate = rospy.Rate(10)
-
-    def callback_fn(self, msg):
-        # current = float(re.match(r".Iq-*\d+\.\d+)", msg.data).group(1))
-        # desire = float(re.match(r".des-*\d+\.\d+)", msg.data).group(1))
-        # position = float(re.match(r".pos-*\d+\.\d+)", msg.data).group(1))
-
-        if msg.data[-5] == '-':
-            current = (float(msg.data[-5:]))
-        else:
-            current = (float(msg.data[-4:]))
-
-        if msg.data[4] == '-':
-            desire = (float(msg.data[4:9]))
-        else:
-            desire = (float(msg.data[4:8]))
-
-        if msg.data[14] == '-':
-            position = (float(msg.data[14:19]))
-        else:
-            position = (float(msg.data[14:18]))
-        
-        # print("des: " + desire + " pos: " + position + " Iq: " + current)
-        self.bariflex_state = position
-
-    def get_bariflex_state(self):
-        return self.bariflex_state
-    def save_pose(self):
-        global neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w
-        tempVar = env.limb.endpoint_pose()["position"]
-        tempVar2 = env.limb.endpoint_pose()["orientation"]
-        neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w = tempVar.x, tempVar.y, tempVar.z, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w
-
+   
     # closes the camera
     def reset(self):
-
-        self.go_to_cartesian(neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w)
-
-        # self.limb.move_to_neutral(self, timeout=15.0, speed=0.3)
-        # self.pipeline.stop()
+        self.pipeline.stop()
 
     # referred to this: # https://github.com/RethinkRobotics/intera_sdk/blob/master/intera_examples/scripts/ik_service_client.py
     def go_to_cartesian(self, x1, y1, z1, q1, q2, q3, q4, tip_name="right_hand"):    
@@ -96,11 +53,14 @@ class SawyerEnv():
         pose.orientation.y = q2
         pose.orientation.z = q3
         pose.orientation.w = q4
-        print("endpose",self.limb.endpoint_pose())
-        print("params", pose, tip_name)
+        #print("endpose",self.limb.endpoint_pose())
+        #print("params", pose, tip_name)
         joint_angles = self.limb.ik_request(pose, tip_name)
-   
-        self.limb.set_joint_positions(joint_angles)
+        #print("joint_angles",type(joint_angles))
+        try: 
+        	self.limb.set_joint_positions(joint_angles)
+        except:
+        	print("Not working :(")
        
 
     def step(self,action):
@@ -124,14 +84,17 @@ class SawyerEnv():
             new_pose = np.matmul(homomat,prev_pose)
     
         rotmat2 = new_pose[:3, :3]
-        quaternion = tf3d.quaternions.mat2quat(rotmat2)
+        quaternionOld = tf3d.quaternions.mat2quat(rotmat2)
+        quaternion = normalize(quaternionOld)
+        #print("quatOld",quaternionOld)
+        #print("quat",quaternion)
     
         self.go_to_cartesian(new_pose[0, 3], new_pose[1, 3], new_pose[2, 3], quaternion[0], quaternion[1], quaternion[2], quaternion[3])
     
         self.rate.sleep()
 
-        image = self.capture_image()
-        return {"new_pose": new_pose, "new_image": image}
+        #image = self.capture_image()
+        return {"new_pose": new_pose}
    
     def replay_bag(self,file1):
         rate = rospy.Rate(10)
@@ -140,8 +103,15 @@ class SawyerEnv():
     
         for g in f.keys():
             group = f[g]
+            #print("group",(group['actions']))
             for i in range(len(group['actions'])):
-                self.step(group['actions'][i])
+                #print("action",group['actions'][i]) # [1,2,3,4,5,6,7,8]
+                action = group['actions'][i]
+                for x in range(3):
+                	if action[0][x] > .1:
+                		action[0][x] = .1
+                #print("action",group['actions'][i]) 
+                self.step(action)
    
     # referred to this: https://github.com/IntelRealSense/librealsense/blob/master/wrappers/python/examples/opencv_viewer_example.py
     def receieve_image(self):
@@ -175,8 +145,7 @@ class SawyerEnv():
         # TODO : here apply the action, use go_to_cartesian
        
         # TODO: return the observation
-        #new_coords = 
-        self.go_to_cartesian(action[0], action[1], action[2], action[3], action[4], action[5], action[6])
+        new_coords = self.go_to_cartesian(action[0], action[1], action[2], action[3], action[4], action[5], action[6])
         #image = self.capture_image()
         self.rate.sleep()
         # return {"new_pose": new_coords, "new_image": image}'''
@@ -186,26 +155,23 @@ def run_episode(policy, env):
    
 def normalize(quaternion):
     quat = np.array(quaternion)
-    quat = LA.norm(quat)
-   
+    norm = LA.norm(quat)
+    print("norm", norm)
+    
+    for i in range(len(quat)):
+    	quat[i] /= norm
+    	
     return quat
 
 if __name__ == '__main__':
     env = SawyerEnv()
-
-
-    #saves current pose of robot    
-    env.save_pose()
-
     rate = rospy.Rate(10)
-    tempVar = env.limb.endpoint_pose()["position"]
-    tempVar2 = env.limb.endpoint_pose()["orientation"]
-    #moves robot slightly
-    for i in range(10):
-        env.go_to_cartesian(tempVar.x, tempVar.y, tempVar.z - .1, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w)
-    #resets to saved pose of robot
-    env.reset()
-    
-    rate.sleep()
 
     env.replay_bag("dummy_data1.hdf5")
+    
+    '''quatmat = np.eye(3)
+    quat = tf3d.quaternions.mat2quat(quatmat)
+    env.go_to_cartesian(0,0,0,quat[0],quat[1],quat[2],quat[3])
+    env.step([0,0,0,quat[0],quat[1],quat[2],quat[3]])'''
+   
+    rate.sleep()

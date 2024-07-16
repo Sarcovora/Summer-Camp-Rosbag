@@ -1,5 +1,4 @@
 # Usage: ./generatehdf5.bash /path/to/directory
-
 if [ -z "$1" ]; then
     echo "Please provide a directory containing the bag files."
     exit 1
@@ -26,17 +25,17 @@ for file in "$1"/*; do
         PYTHON_PID=$!
 
 
-        echo "Press Ctrl^C to exit"
+        echo "Press Ctrl^Z to exit"
         trap 'rosnode kill --all' SIGINT
 
         # Get the duration of the bag file in seconds
         DURATION=$(rosbag info --yaml "$file" | grep duration | awk '{print $2}')
         
-        SLEEP_TIME=$(echo "$DURATION / 0.5" | bc)
+        SLEEP_TIME=$(echo "$DURATION / 0.25" | bc)
         
         sleep 2
         echo "about to play"
-        rosbag play "$file" --rate 0.5 --clock &
+        rosbag play "$file" --rate 0.25 --clock &
         ROSBAG_PID=$!
         # Sleep for the calculated time
         sleep $SLEEP_TIME
