@@ -192,7 +192,7 @@ def write_hdf5():
         # hdf5_file
         group.attrs['num_samples'] = len(uber_action_arr)
         group.create_dataset("obs/color", data=np.array(uber_color_arr))
-        group.create_dataset("obs/depth", data=np.array(uber_depth_arr).reshape(len(uber_depth_arr), 160, 90, 1) // 256)
+        group.create_dataset("obs/depth", data=np.array(uber_depth_arr).reshape(len(uber_depth_arr), 160, 90, 1) // 256 )
         group.create_dataset("obs/pos", data=np.array(uber_pos_arr).reshape(len(uber_pos_arr), 1))
         group.create_dataset("actions", data=np.array(uber_action_arr))
     
