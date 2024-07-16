@@ -81,7 +81,7 @@ class SawyerEnv():
         tempVar = env.limb.endpoint_pose()["position"]
         tempVar2 = env.limb.endpoint_pose()["orientation"]
         neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w = tempVar.x, tempVar.y, tempVar.z, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w
-        dict = dict = {
+        dict = {
     "neutralx": neutralx,
     "neutraly": neutraly,
     "neutralz": neutralz,
