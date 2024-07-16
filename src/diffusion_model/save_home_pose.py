@@ -23,11 +23,13 @@ from numpy import linalg as LA
 from robotMoveScript import SawyerEnv
 import json
 
+script_dir = os.path.dirname(os.path.realpath(__file__))
+file_path = os.path.join(script_dir, 'save_pose.json')
 
 dummy_class = SawyerEnv()
 
 dataset = []
 dataset.append(dummy_class.save_pose())
 
-with open("home_pose.json", "w") as final:
+with open(file_path, "w") as final:
   json.dumps(dataset, final)
