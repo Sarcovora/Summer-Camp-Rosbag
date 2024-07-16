@@ -82,13 +82,13 @@ class SawyerEnv():
         tempVar2 = env.limb.endpoint_pose()["orientation"]
         neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w = tempVar.x, tempVar.y, tempVar.z, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w
         dict = {
-    "neutralx": neutralx,
-    "neutraly": neutraly,
-    "neutralz": neutralz,
-    "neutral2x": neutral2x,
-    "neutral2y": neutral2y,
-    "neutral2z": neutral2z,
-    "neutral2w": neutral2w
+    "neutralx": neturalx,
+    "neutraly": neturaly,
+    "neutralz": neturalz,
+    "neutral2x": netural2x,
+    "neutral2y": netural2y,
+    "neutral2z": netural2z,
+    "neutral2w": netural2w
 }
         return dict
     # closes the camera
