@@ -53,11 +53,14 @@ class SawyerEnv():
         pose.orientation.y = q2
         pose.orientation.z = q3
         pose.orientation.w = q4
-        print("endpose",self.limb.endpoint_pose())
-        print("params", pose, tip_name)
+        #print("endpose",self.limb.endpoint_pose())
+        #print("params", pose, tip_name)
         joint_angles = self.limb.ik_request(pose, tip_name)
-   
-        self.limb.set_joint_positions(joint_angles)
+        #print("joint_angles",type(joint_angles))
+        try: 
+        	self.limb.set_joint_positions(joint_angles)
+        except:
+        	print("Not working :(")
        
 
     def step(self,action):
@@ -81,14 +84,17 @@ class SawyerEnv():
             new_pose = np.matmul(homomat,prev_pose)
     
         rotmat2 = new_pose[:3, :3]
-        quaternion = tf3d.quaternions.mat2quat(rotmat2)
+        quaternionOld = tf3d.quaternions.mat2quat(rotmat2)
+        quaternion = normalize(quaternionOld)
+        #print("quatOld",quaternionOld)
+        #print("quat",quaternion)
     
         self.go_to_cartesian(new_pose[0, 3], new_pose[1, 3], new_pose[2, 3], quaternion[0], quaternion[1], quaternion[2], quaternion[3])
     
         self.rate.sleep()
 
-        image = self.capture_image()
-        return {"new_pose": new_pose, "new_image": image}
+        #image = self.capture_image()
+        return {"new_pose": new_pose}
    
     def replay_bag(self,file1):
         rate = rospy.Rate(10)
@@ -97,8 +103,15 @@ class SawyerEnv():
     
         for g in f.keys():
             group = f[g]
+            #print("group",(group['actions']))
             for i in range(len(group['actions'])):
-                self.step(group['actions'][i])
+                #print("action",group['actions'][i]) # [1,2,3,4,5,6,7,8]
+                action = group['actions'][i]
+                for x in range(3):
+                	if action[0][x] > .1:
+                		action[0][x] = .1
+                #print("action",group['actions'][i]) 
+                self.step(action)
    
     # referred to this: https://github.com/IntelRealSense/librealsense/blob/master/wrappers/python/examples/opencv_viewer_example.py
     def receieve_image(self):
@@ -142,8 +155,12 @@ def run_episode(policy, env):
    
 def normalize(quaternion):
     quat = np.array(quaternion)
-    quat = LA.norm(quat)
-   
+    norm = LA.norm(quat)
+    print("norm", norm)
+    
+    for i in range(len(quat)):
+    	quat[i] /= norm
+    	
     return quat
 
 if __name__ == '__main__':
@@ -151,5 +168,10 @@ if __name__ == '__main__':
     rate = rospy.Rate(10)
 
     env.replay_bag("dummy_data1.hdf5")
+    
+    '''quatmat = np.eye(3)
+    quat = tf3d.quaternions.mat2quat(quatmat)
+    env.go_to_cartesian(0,0,0,quat[0],quat[1],quat[2],quat[3])
+    env.step([0,0,0,quat[0],quat[1],quat[2],quat[3]])'''
    
     rate.sleep()

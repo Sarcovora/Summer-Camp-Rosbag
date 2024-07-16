@@ -23,6 +23,13 @@ class Camera:
         color_image = np.asanyarray(color_frame.get_data())
         color_image_rgb = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
         return color_image_rgb
+    
+    def get_depth_frame(self):
+        """Capture a depth frame and return it as a NumPy array with dimensions (IMG_X, IMG_Y)"""
+        frames = self.pipeline.wait_for_frames()
+        depth_frame = frames.get_depth_frame()
+        depth_image = np.asanyarray(depth_frame.get_data())
+        return depth_image
 
     def close(self):
         """Shuts down the RealSense camera pipeline."""
@@ -33,3 +40,6 @@ if __name__ == "__main__":
     camera = Camera()
     frame = camera.get_frame()
     print(frame)
+
+    depth_frame = camera.get_depth_frame()
+    print(depth_frame)
