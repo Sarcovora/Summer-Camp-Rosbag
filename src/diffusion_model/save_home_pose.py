@@ -24,7 +24,7 @@ from robotMoveScript import SawyerEnv
 import json
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-file_path = os.path.join(script_dir, 'save_pose.json')
+file_path = os.path.join(script_dir, 'home_pose.json')
 
 dummy_class = SawyerEnv()
 
