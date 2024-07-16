@@ -10,91 +10,103 @@ import numpy as np
 
 # helper functions
 
-def get_pad_obs(demo, num_times_zero, index, pose_stats, or_stats, img_stats):
+def get_pad_obs(demo, num_times_zero, index, color_stats, depth_stats, gripper_stats):
   '''
   Returns observation data when padding is needed at the beginning.
+
   '''
-  temp_image_list = []
-  temp_agent_pos_list = []
+  temp_color_list = []
+  temp_depth_list = []
+  temp_gripper_pos_list = []
   for x in range(num_times_zero):
     # pads the necessary amount of times
-    img = torch.from_numpy(demo[0]["image"])
-    img = normalize(img, img_stats)
+    color = torch.from_numpy(demo[0]["image_color"])
+    color = normalize(color, color_stats)
     
-    temp_image_list.append(img)
+    temp_color_list.append(color)
 
-    temp_pos = torch.from_numpy(demo[0]["position"])
-    temp_or = torch.from_numpy(demo[0]["orientation"])
+    depth = torch.from_numpy(demo[0]["image_depth"])
+    depth = normalize(depth, depth_stats)
+    temp_depth_list.append(depth)
+    
 
-    temp_pos = normalize(temp_pos, pose_stats)
-    temp_or = normalize(temp_or, or_stats)
-    temp_agent_pos_list.append(torch.cat((temp_pos, temp_or), dim=1))
+    gripper_pos = torch.from_numpy(demo[0]["gripper_pos"])
+
+    temp_grip = normalize(temp_grip, gripper_stats)
+    temp_gripper_pos_list.append(gripper_pos)
 
   idx = 1
 
   while idx < index + 1:
     # remaining observations
-    img = torch.from_numpy(demo[idx]["image"])
-    img = normalize(img, img_stats)
+    color = torch.from_numpy(demo[idx]["image_color"])
+    color = normalize(color, color_stats)
     
-    temp_image_list.append(img)
-    temp_pos = torch.from_numpy(demo[idx]["position"])
-    temp_or = torch.from_numpy(demo[idx]["orientation"])
+    depth = torch.from_numpy(demo[idx]["image_depth"])
+    depth = normalize(depth, depth_stats)
+    temp_depth_list.append(depth)
+    
+    temp_color_list.append(color)
+    temp_grip = torch.from_numpy(demo[idx]["gripper_pos"])
+    temp_grip = normalize(temp_grip, gripper_stats)
+  
 
-    temp_pos = normalize(temp_pos, pose_stats)
-    temp_or = normalize(temp_or, or_stats)
-    temp_agent_pos_list.append(torch.cat((temp_pos, temp_or), dim=1))
+    temp_gripper_pos_list.append(gripper_pos)
 
     idx += 1
 
   # returns data as torch tensors
-  image_obs = torch.stack(temp_image_list)
+  depth_obs = torch.stack(temp_depth_list)
   transform = transforms.Resize((96, 96),
               interpolation=transforms.InterpolationMode.BILINEAR)
-  image_obs = transform(image_obs)
-  agent_obs = torch.stack(temp_agent_pos_list)
+  depth_obs = transform(depth_obs)
+  gripper_obs = torch.stack(temp_gripper_pos_list)
+  color_obs = torch.stack(temp_color_list)
+  color_obs = transform(color_obs)
 
 
-  return image_obs, agent_obs
+  return color_obs, depth_obs, gripper_obs
 
 
 
-def get_obs(demo, start_idx, index, pose_stats, or_stats, img_stats):
+def get_obs(demo, start_idx, index, color_stats, depth_stats, gripper_stats):
   '''
   Returns observation data when padding is not needed. 
   '''
-  temp_image_list = []
-  temp_agent_pos_list = []
+  temp_color_list = []
+  temp_depth_list = []
+  temp_gripper_pos_list = []
 
   idx = start_idx
 
   while idx < index + 1:
-    img = torch.from_numpy(demo[idx]["image"])
-    img = normalize(img, img_stats)
+    color = torch.from_numpy(demo[idx]["image_color"])
+    color = normalize(color, color_stats)
 
-    temp_image_list.append(img)
-    temp_pos = torch.from_numpy(demo[idx]["position"])
-    temp_or = torch.from_numpy(demo[idx]["orientation"])
+    temp_color_list.append(color)
+    temp_gripper_pos = torch.from_numpy(demo[idx]["gripper_pos"])
 
-    temp_pos = normalize(temp_pos, pose_stats)
-    temp_or = normalize(temp_or, or_stats)
-    temp_agent_pos_list.append(torch.cat((temp_pos, temp_or), dim=1))
+
+    temp_gripper_pos = normalize(temp_gripper_pos_list, gripper_stats)
+    temp_gripper_pos_list.append(temp_gripper_pos)
 
     idx += 1
 
   # returns data as torch tensors  
-  image_obs = torch.stack(temp_image_list)
+  depth_obs = torch.stack(temp_depth_list)
   transform = transforms.Resize((96, 96),
               interpolation=transforms.InterpolationMode.BILINEAR)
-  image_obs = transform(image_obs)
-  agent_obs = torch.stack(temp_agent_pos_list)
+  depth_obs = transform(depth_obs)
+  gripper_obs = torch.stack(temp_gripper_pos_list)
+  color_obs = torch.stack(temp_color_list)
+  color_obs = transform(color_obs)
 
 
-  return image_obs, agent_obs
+  return color_obs, depth_obs, gripper_obs
 
 
 
-def get_action(demo, pred_horizon, start_idx, pose_stats, or_stats):
+def get_action(demo, pred_horizon, start_idx):
   '''
   Returns action data, handles end padding if needed. 
   '''
@@ -103,26 +115,30 @@ def get_action(demo, pred_horizon, start_idx, pose_stats, or_stats):
 
   temp_action_list = []
 
+
+  demo[index]["actions"] 
+  demo[index+pred_horizon]["actions"]
+  return # (pred_horizon, 8)
+   # ----
+
   while count < pred_horizon and index < len(demo):
     # gets actions until pred_horizon is satisfied or end of list is reached.
-    temp_pos = torch.from_numpy(demo[index]["position"])
-    temp_or = torch.from_numpy(demo[index]["orientation"])
+   
 
-    temp_pos = normalize(temp_pos, pose_stats)
-    temp_or = normalize(temp_or, or_stats)
-    temp_action_list.append(torch.cat((temp_pos, temp_or), dim=1))
+
+
+
+   
+
+    temp_action_list.append(demo[index]["actions"])
 
     count += 1
     index += 1
 
   while count < pred_horizon:
     # handles padding if needed. 
-    temp_pos = torch.from_numpy(demo[len(demo) - 1]["position"])
-    temp_or = torch.from_numpy(demo[len(demo) - 1]["orientation"])
 
-    temp_pos = normalize(temp_pos, pose_stats)
-    temp_or = normalize(temp_or, or_stats)
-    temp_action_list.append(torch.cat((temp_pos, temp_or), dim=1))
+    temp_action_list.append(temp_action_list[len(demo)-1]["actions"])
 
     count += 1
 
@@ -159,26 +175,31 @@ def unnormalize(tensor, stats):
 
 
 # Dataset class. Returns data as shown below
-# image : tensor size (batch_size, obs_horizon, 3, 96, 96)
+# F : tensor size (batch_size, obs_horizon, 3, 96, 96)
 # agent_pos : tensor size (batch_size, obs_horizon, 7)
 # action: tensor size (batch_size, pred_horizon, 7)
 class DiffDataset(Dataset):
   def __init__(self, demonstrations, obs_horizon, pred_horizon, 
-               pose_stats, orientation_stats, img_stats=None):
+               color_stats, depth_stats, gripper_stats):
     '''
     Initializes dataset.
     '''
     self.dataset = []
     self.obs_horizon = obs_horizon
     self.pred_horizon = pred_horizon
-    self.pose_stats = pose_stats
-    self.orientation_stats = orientation_stats
+    self.color_stats = color_stats
+    self.depth_stats = depth_stats
+    self.gripper_stats = gripper_stats
 
-    if (img_stats == None):
-      self.img_stats = {"min" : 0, "max" : 255}
+    if (color_stats == None):
+      self.color_stats = {"min" : 0, "max" : 255}
     else:
-      self.img_stats = img_stats
+      self.color_stats = color_stats
 
+    if (depth_stats == None):
+      self.depth_stats = {"min" : 0, "max" : 255} #not sure if depth image should be compressed to 255
+    else:
+      self.depth_stats = depth_stats
 
     for demo in demonstrations:
       for i in range(len(demo) - 1):
@@ -191,32 +212,30 @@ class DiffDataset(Dataset):
         elif (start_idx < 0):
           num_times_zero = abs(start_idx) + 1
 
-        temp_image_list = []
-        temp_agent_pos_list = []
+
 
         # getting observations
         if (num_times_zero > 0):
-          image_obs, agent_obs = get_pad_obs(demo,
+          color_obs, depth_obs, gripper_obs = get_pad_obs(demo,
                                             num_times_zero, i, 
-                                            self.pose_stats, 
-                                            self.orientation_stats, 
-                                            self.img_stats)
+                                            self.color_stats, 
+                                            self.depth_stats, 
+                                            self.gripper_stats)
         else:
-          image_obs, agent_obs = get_obs(demo, 
+          color_obs, depth_obs, gripper_obs(demo, 
                                          start_idx, i, 
-                                         self.pose_stats, 
-                                         self.orientation_stats,
-                                         self.img_stats)
+                                         self.color_stats, 
+                                         self.depth_stats,
+                                         self.gripper_stats)
           
         # getting actions
         action_pred = get_action(demo, 
-                                 pred_horizon, i + 1, 
-                                 self.pose_stats, 
-                                 self.orientation_stats)
+                                 pred_horizon, i + 1,)
 
-        temp["image"] = image_obs
-        temp["agent_pos"] = agent_obs
-        temp["action"] = action_pred
+        temp["image_color"] = color_obs
+        temp["image_depth"] = depth_obs
+        temp["gripper_pos"] = gripper_obs
+        temp["actions"] = action_pred
         self.dataset.append(temp)
 
   def __len__(self):
@@ -233,8 +252,9 @@ class DiffDataset(Dataset):
 
     temp = self.dataset[idx]
 
-    nsample["image"] = (temp["image"])
-    nsample["agent_pos"] = temp["agent_pos"].squeeze(1).float()
-    nsample["action"] = temp["action"].squeeze(1).float()
+    nsample["color"] = (temp["color"])
+    nsample["depth"] = (temp["depth"])
+    nsample["gripper_pos"] = temp["gripper_pos"].squeeze(1).float()
+    nsample["actions"] = temp["actions"].squeeze(1).float()
 
     return nsample
