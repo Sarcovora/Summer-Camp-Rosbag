@@ -83,7 +83,7 @@ def sync_callback(color, depth, bariflex):
     try:
         bridge = CvBridge()
         cv_image = bridge.compressed_imgmsg_to_cv2(color, "bgr8")
-        cv_image = cv2.resize(cv_image, (320, 180), interpolation=cv2.INTER_AREA)
+        cv_image = cv2.resize(cv_image, (160, 90), interpolation=cv2.INTER_AREA)
         rgb_arr = np.asarray(cv_image)        
 
     except CvBridgeError as e:
@@ -92,7 +92,7 @@ def sync_callback(color, depth, bariflex):
     try:
         bridge = CvBridge()
         cv_image = bridge.imgmsg_to_cv2(depth, "16UC1")
-        cv_image = cv2.resize(cv_image, (320, 180), interpolation=cv2.INTER_AREA)
+        cv_image = cv2.resize(cv_image, (160, 90), interpolation=cv2.INTER_AREA)
         depth_arr = np.asarray(cv_image)
 
 
@@ -122,7 +122,7 @@ def sync_callback(color, depth, bariflex):
             inv_prev = inv(prev_pose)
             rel_pose = np.matmul(inv_prev, transform_matrix)
         else:
-            rel_pose = transform_matrix
+            rel_pose = np.eye(4)
         prev_pose = transform_matrix
         deltaTrans = [0, 0, 0]
         deltaTrans[0] = rel_pose[0, 3]
@@ -170,6 +170,14 @@ def write_hdf5():
     if len(uber_action_arr) == 0:
         print('no transitions found')
         return 
+    
+    if np.isnan(uber_action_arr).any():
+        print('caught nans')
+        return 
+    
+    if (np.linalg.norm(np.array(uber_action_arr)[:,:3], axis=1) > 10).any():
+        print('caught inf')
+        return 
 
     with h5py.File(os.path.join(data_dir, hdf5_name), "a") as hdf5_file:
         
@@ -178,13 +186,13 @@ def write_hdf5():
         else:
             data_group = hdf5_file['data']
 
-        num_demos = len(hdf5_file.keys())
+        num_demos = len(data_group.keys())
         name = f"demo_{num_demos}"
         group = data_group.create_group(name)
         # hdf5_file
         group.attrs['num_samples'] = len(uber_action_arr)
         group.create_dataset("obs/color", data=np.array(uber_color_arr))
-        group.create_dataset("obs/depth", data=np.array(uber_depth_arr).reshape(len(uber_depth_arr), 320, 180, 1))
+        group.create_dataset("obs/depth", data=np.array(uber_depth_arr).reshape(len(uber_depth_arr), 160, 90, 1) // 256)
         group.create_dataset("obs/pos", data=np.array(uber_pos_arr).reshape(len(uber_pos_arr), 1))
         group.create_dataset("actions", data=np.array(uber_action_arr))
     
