@@ -134,6 +134,8 @@ def sync_callback(color, depth, bariflex):
         deltaQuat = quaternion_from_matrix(rel_pose)
 
         if np.linalg.norm(deltaTrans) >= 10:
+            breakpoint()
+            print("trying terminate")
             terminated = True
             return 
 
@@ -274,6 +276,7 @@ def main():
     bag_rate = 0.25
 
     if bag_path:
+        print(bag_path)
         map_name = os.path.basename(bag_path).split('_')[1]
         source_map_file_path = os.path.join(recreated_maps_dir, f'{map_name}.db')
         print(source_map_file_path)

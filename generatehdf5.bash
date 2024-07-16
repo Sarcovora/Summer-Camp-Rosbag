@@ -43,6 +43,7 @@ for file in "$1"/*; do
         kill $ROSBAG_PID
         kill $PYTHON_PID
         pkill -f call_this_bash.py
+        pkill "ros"
 
     else
         echo "$file is not a regular file, skipping..."
