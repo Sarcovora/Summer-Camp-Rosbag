@@ -1,3 +1,4 @@
+import os
 import rospy
 import argparse
 import intera_interface
