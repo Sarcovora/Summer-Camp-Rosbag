@@ -131,6 +131,9 @@ def sync_callback(color, depth, bariflex):
         deltaQuat = [0, 0, 0, 1]
         deltaQuat = quaternion_from_matrix(rel_pose)
 
+        if np.linalg.norm(deltaTrans) >= 10:
+            return 
+
         # record the relative pose together with the most recent depth and color image received by subscribers
         if rgb_arr is not None and depth_arr is not None and regex is not None:
                 uber_color_arr.append(rgb_arr)
