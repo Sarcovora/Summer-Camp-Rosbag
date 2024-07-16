@@ -25,7 +25,8 @@ import transforms3d as tf3d
 import h5py
 from numpy import linalg as LA
 
-
+script_dir = os.path.dirname(os.path.realpath(__file__))
+file_path = os.path.join(script_dir, 'home_pose.json')
 
 class SawyerEnv():
 
@@ -46,6 +47,9 @@ class SawyerEnv():
         # Start the camera
         #self.pipeline.start(self.config)
         self.rate = rospy.Rate(10)
+
+        with open(file_path, 'r') as file:
+            self.data = json.load(file)[0]
 
     def callback_fn(self, msg):
         # current = float(re.match(r".Iq-*\d+\.\d+)", msg.data).group(1))
@@ -77,10 +81,19 @@ class SawyerEnv():
         tempVar = env.limb.endpoint_pose()["position"]
         tempVar2 = env.limb.endpoint_pose()["orientation"]
         neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w = tempVar.x, tempVar.y, tempVar.z, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w
-
+        dict = dict = {
+    "neutralx": neutralx,
+    "neutraly": neutraly,
+    "neutralz": neutralz,
+    "neutral2x": neutral2x,
+    "neutral2y": neutral2y,
+    "neutral2z": neutral2z,
+    "neutral2w": neutral2w
+}
+        return dict
     # closes the camera
     def reset(self):
-
+        neutralx, neutraly, neutralz, neutral2x, neutral2y, neutral2z, neutral2w = self.data.values()
         self.go_to_cartesian(neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w)
 
         # self.limb.move_to_neutral(self, timeout=15.0, speed=0.3)
