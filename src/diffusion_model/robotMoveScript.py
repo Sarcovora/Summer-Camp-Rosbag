@@ -208,7 +208,6 @@ if __name__ == '__main__':
 
 
     #saves current pose of robot    
-    env.save_pose()
 
     rate = rospy.Rate(10)
     tempVar = env.limb.endpoint_pose()["position"]
