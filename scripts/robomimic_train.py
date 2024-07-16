@@ -312,7 +312,7 @@ def train(config, device):
             TrainUtils.save_model(
                 model=model,
                 config=config,
-                env_meta=env_meta,
+                env_meta={},
                 shape_meta=shape_meta,
                 ckpt_path=os.path.join(ckpt_dir, epoch_ckpt_name + ".pth"),
                 obs_normalization_stats=obs_normalization_stats,
