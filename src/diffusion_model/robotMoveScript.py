@@ -93,7 +93,7 @@ class SawyerEnv():
         return dict
     # closes the camera
     def reset(self):
-        neutralx, neutraly, neutralz, neutral2x, neutral2y, neutral2z, neutral2w = self.data.values()
+        neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w = self.data.values()
         self.go_to_cartesian(neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w)
 
         # self.limb.move_to_neutral(self, timeout=15.0, speed=0.3)
