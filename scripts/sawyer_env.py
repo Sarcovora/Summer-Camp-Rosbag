@@ -1,5 +1,3 @@
-#Forked Version
-
 import rospy
 import argparse
 import intera_interface
@@ -25,6 +23,8 @@ import transforms3d as tf3d
 import h5py
 from numpy import linalg as LA
 
+from std_msgs.msg import UInt16
+
 
 class SawyerEnv():
 
@@ -33,17 +33,18 @@ class SawyerEnv():
         self.limb = Limb()
         self.tip_name = "right_hand"
 
+        pub = rospy.Publisher('/bariflex', UInt16, queue_size=10)
         rospy.Subscriber('/bariflex', String, self.callback_fn)
 
-        #self.pipeline = rs.pipeline()
-        #self.config = rs.config()
+        self.pipeline = rs.pipeline()
+        self.config = rs.config()
        
         # change coordinates if necessary
-        # self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        # self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
         # Start the camera
-        #self.pipeline.start(self.config)
+        self.pipeline.start(self.config)
         self.rate = rospy.Rate(10)
         self.horizon = 500
         self.step_counter = 0 
@@ -84,14 +85,14 @@ class SawyerEnv():
     def reset(self):
         self.step_counter = 0 
 
-        self.go_to_cartesian(neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w)
+        # self.go_to_cartesian(neturalx, neturaly, neturalz, netural2x, netural2y, netural2z, netural2w)
 
         # self.limb.move_to_neutral(self, timeout=15.0, speed=0.3)
         # self.pipeline.stop()
 
     # referred to this: # https://github.com/RethinkRobotics/intera_sdk/blob/master/intera_examples/scripts/ik_service_client.py
     def go_to_cartesian(self, x1, y1, z1, q1, q2, q3, q4, tip_name="right_hand"):    
-        pose = Pose()
+        pose = Pose()        # return dictionary of "color", "depth"
         pose.position.x = x1
         pose.position.y = y1
         pose.position.z = z1
@@ -110,11 +111,22 @@ class SawyerEnv():
         # TODO: publish to bariflex_motion topic 
         # TODO: make publisher above in __init__ 
         # TODO: convert action from policy to integer: 
+        int_val = int(gripper_act)
+        if int_val<0.5:
+            self.pub.publish(2)
+        else:
+            self.pub.publsh(1)
         # 1: open bariflex (buttons will be disabled)
         # 2: close bariflex (buttons will be disabled)
+        
+        # TODO: init_node once during __init__ 
+        # TODO: make the publisher once during __init__ 
+        # TODO: publish one message rather than while loop
+        # thanks :) 
+        pass
 
     def step(self,action):
-
+     
         self.step_counter += 1
 
         #make translation and quaternion into a matrix
@@ -140,35 +152,35 @@ class SawyerEnv():
         quaternion = tf3d.quaternions.mat2quat(rotmat2)
     
         self.go_to_cartesian(new_pose[0, 3], new_pose[1, 3], new_pose[2, 3], quaternion[0], quaternion[1], quaternion[2], quaternion[3])
-    
+        self.handle_gripper_action(action[-1])
+
         self.rate.sleep()
 
-        image = self.receieve_image()
-
-        # TODO: 
-        # return next_obs, r, done, _
         reward = 0
-        done = (self.step_counter > self.horizon)
+        done = (self.step_counter > self.horizon)   
         info = {}
         obs = {}
 
         # TODO: group 4
-        # TODO: give obs keys "color", "depth", "pos" for images and bariflex state, respectively 
+        # TODO: give obs keys "color", "depth", "pos" for images and bariflex state, respectively
+        obs = self.receive_image()
+        obs["pos"] = self.bariflex_stateUInt16,
+        
         return obs, reward, done, info 
         
-   
+           # return dictionary of "color", "depth"
     def replay_bag(self,file1):
         rate = rospy.Rate(10)
 
         f = h5py.File(file1, 'r')
     
-        for g in f.keys():
+        for g in f.keys(): 
             group = f[g]
             for i in range(len(group['actions'])):
                 self.step(group['actions'][i])
    
     # referred to this: https://github.com/IntelRealSense/librealsense/blob/master/wrappers/python/examples/opencv_viewer_example.py
-    def receieve_image(self):
+    def receive_image(self):
         # Wait for a coherent pair of frames: depth and color
         frames = self.pipeline.wait_for_frames()
         depth_frame = frames.get_depth_frame()
@@ -179,33 +191,19 @@ class SawyerEnv():
         color_image = np.asanyarray(color_frame.get_data())
 
         # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
-        depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
+        # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=UInt16,
 
-        depth_colormap_dim = depth_colormap.shape
-        color_colormap_dim = color_image.shape
-
-        # If depth and color resolutions are different, resize color image to match depth image for display
-        if depth_colormap_dim != color_colormap_dim:
-            resized_color_image = cv2.resize(color_image, dsize=(depth_colormap_dim[1], depth_colormap_dim[0]), interpolation=cv2.INTER_AREA)
-            images = np.hstack((resized_color_image, depth_colormap))
-        else:
-            images = np.hstack((color_image, depth_colormap))
-       
-        # If needed, return both images
-
-        # TODO: group 1 
-        # resize the color image to (3, 160, 90)
-        # resize depth image to (1, 160, 90)
-        # return dictionary of "color", "depth"
-        return images
-     
+        image = {"color: ", new_color_image.reshape(160, 90, 3),
+                 "depth: ", new_depth_image.reshape(160, 90, 1) }
+        return image
  
+
 
 def normalize(quaternion):
     quat = np.array(quaternion)
     quat = LA.norm(quat)
    
-    return quat
+    return quat# TODO: 
 
 if __name__ == '__main__':
     env = SawyerEnv()
@@ -214,15 +212,17 @@ if __name__ == '__main__':
     #saves current pose of robot    
     env.save_pose()
 
-    rate = rospy.Rate(10)
-    tempVar = env.limb.endpoint_pose()["position"]
-    tempVar2 = env.limb.endpoint_pose()["orientation"]
-    #moves robot slightly
-    for i in range(10):
-        env.go_to_cartesian(tempVar.x, tempVar.y, tempVar.z - .1, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w)
-    #resets to saved pose of robot
-    env.reset()
-    
-    rate.sleep()
+    obs, rew, done, info = env.step(np.zeros(8))
 
-    env.replay_bag("dummy_data1.hdf5")
+    # rate = rospy.Rate(10)
+    # tempVar = env.limb.endpoint_pose()["position"]
+    # tempVar2 = env.limb.endpoint_pose()["orientation"]
+    #moves robot slightly
+    # for i in range(10):
+        # env.go_to_cartesian(tempVar.x, tempVar.y, tempVar.z - .1, tempVar2.x, tempVar2.y, tempVar2.z, tempVar2.w)
+    #resets to saved pose of robot
+    # env.reset()
+    
+    # rate.sleep()
+
+    # env.replay_bag("dummy_data1.hdf5")

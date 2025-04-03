@@ -68,7 +68,7 @@ import robomimic.utils.obs_utils as ObsUtils
 from robomimic.envs.env_base import EnvBase
 from robomimic.algo import RolloutPolicy
 
-from sawyer_env import SawyerEnv
+from real_sawyer_env import SawyerEnv
 
 
 def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5, return_obs=False, camera_names=None):
@@ -93,21 +93,21 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
         stats (dict): some statistics for the rollout - such as return, horizon, and task success
         traj (dict): dictionary that corresponds to the rollout trajectory
     """
-    assert isinstance(env, EnvBase)
+    # assert isinstance(env, EnvBase)
     assert isinstance(policy, RolloutPolicy)
-    assert not (render and (video_writer is not None))
+    # assert not (render and (video_writer is not None))
 
     policy.start_episode()
     obs = env.reset()
-    state_dict = env.get_state()
+    # state_dict = env.get_state()
 
     # hack that is necessary for robosuite tasks for deterministic action playback
-    obs = env.reset_to(state_dict)
+    # obs = env.reset_to(state_dict)
 
     results = {}
     video_count = 0  # video frame counter
     total_reward = 0.
-    traj = dict(actions=[], rewards=[], dones=[], states=[], initial_state_dict=state_dict)
+    traj = dict(actions=[], rewards=[], dones=[], states=[])
     if return_obs:
         # store observations too
         traj.update(dict(obs=[], next_obs=[]))
@@ -122,7 +122,7 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
 
             # compute reward
             total_reward += r
-            success = env.is_success()["task"]
+            success = False
 
             # visualization
             if render:
@@ -140,7 +140,6 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
             traj["actions"].append(act)
             traj["rewards"].append(r)
             traj["dones"].append(done)
-            traj["states"].append(state_dict["states"])
             if return_obs:
                 # Note: We need to "unprocess" the observations to prepare to write them to dataset.
                 #       This includes operations like channel swapping and float to uint8 conversion
@@ -154,10 +153,11 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
 
             # update for next iter
             obs = deepcopy(next_obs)
-            state_dict = env.get_state()
 
-    except env.rollout_exceptions as e:
+    except Exception as e:
+        raise(e)
         print("WARNING: got rollout exception {}".format(e))
+
 
     stats = dict(Return=total_reward, Horizon=(step_i + 1), Success_Rate=float(success))
 
@@ -214,9 +214,9 @@ def run_trained_agent(args):
             env=env, 
             horizon=rollout_horizon, 
             render=args.render, 
-            video_writer=video_writer, 
+            video_writer=None, 
             video_skip=args.video_skip, 
-            return_obs=(write_dataset and args.dataset_obs),
+            return_obs=False,
             camera_names=args.camera_names,
         )
         rollout_stats.append(stats)
